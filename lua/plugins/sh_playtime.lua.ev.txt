@@ -16,7 +16,7 @@ function PLUGIN:Call( ply, args )
 		pl = evolve:GetBySteamID( uid )
 	else
 		pl = evolve:FindPlayer( args[1], ply )
-		
+
 		if ( #pl > 1 ) then
 			evolve:Notify( ply, evolve.colors.white, "Did you mean ", evolve.colors.red, evolve:CreatePlayerList( pl, true ), evolve.colors.white, "?" )
 			return
@@ -31,7 +31,7 @@ function PLUGIN:Call( ply, args )
 			uid = pl:SteamID()
 		end
 	end
-	
+
 	local time = evolve:GetProperty( uid, "Time" )
 	if ( pl and pl:IsValid() ) then
 		time = time + evolve:Time() - pl.EV_LastPlaytimeSave
