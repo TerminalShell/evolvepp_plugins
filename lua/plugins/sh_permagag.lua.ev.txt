@@ -1,0 +1,112 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Permagag a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Permagag"
+PLUGIN.Description = "Permagag a player from using voice chat."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"permagag","pgag"}
+PLUGIN.Usage = "<player> [1/0]"
+PLUGIN.Privileges = { "Permagag" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local uid, pl
+		if ( evolve:IsSteamID(args[1]) ) then
+			uid = evolve:SteamIDByProperty( "SteamID", args[1] )
+			pl = evolve:GetBySteamID( uid )
+		else
+			pl = evolve:FindPlayer( args[1], ply )
+			
+			if ( #pl > 1 ) then
+				evolve:Notify( ply, evolve.colors.white, "Did you mean ", evolve.colors.red, evolve:CreatePlayerList( pl, true ), evolve.colors.white, "?" )
+				return
+			elseif ( #pl == 0 ) then
+				evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayersnoimmunity )
+				return
+			elseif ( !pl[1]:IsValid() ) then
+				evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+				return
+			else
+				pl = pl[1]
+				uid = pl:SteamID()
+			end
+		end
+
+		local enabled = ( tonumber( args[ #args ] ) or 1 ) > 0
+		
+		if ( pl and pl:IsValid() ) then
+			if ( !enabled ) then enabled = nil end
+			pl:SetProperty( "PGag", enabled )
+			if ( enabled ) then
+				pl:SendLua( "LocalPlayer():ConCommand( \"-voicerecord\" )" )
+				pl:SetNWBool( "PGag", true )
+				evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has permagagged ", evolve.colors.red, pl:GetProperty( "Nick" ), evolve.colors.white, "." )
+			else
+				pl:SetNWBool( "PGag", false )
+				evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has unpermagagged ", evolve.colors.red, pl:GetProperty( "Nick" ), evolve.colors.white, "." )
+			end
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:PlayerInitialSpawn( ply )
+	if ( ply:GetProperty( "PGag" ) == true  ) then
+		ply:SetNWBool( "PGag", true )
+	end
+end
+
+function PLUGIN:PlayerStartVoice( ply )
+	if ( ply:GetNWBool( "PGag" ) == true  ) then
+		RunConsoleCommand( "-voicerecord" )
+		ply:ChatPrint('You are permanently gagged, no one can hear you.')
+		return false
+	end
+end
+
+function PLUGIN:PlayerCanHearPlayersVoice( listener, talker )
+	if ( talker:GetProperty( "PGag" ) == true ) then
+		return false
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	if ( arg ) then
+		table.insert( players, arg )
+		RunConsoleCommand( evolve.prefix, self.Commands[1], unpack( players ) )
+	else
+		return self.Title, evolve.category.punishment, { { "Enable", 1 }, { "Disable", 0 } }
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )
+
+/*-------------------------------------------------------------------------------------------------------------------------
+	Unpermagag a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Unpermagag"
+PLUGIN.Description = "Unpermagag a player. (Voice)"
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"unpermagag","unpgag"}
+PLUGIN.Usage = "[player]"
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( "Permagag" ) ) then
+		local plugin = evolve:GetPlugin( "Permagag" )
+		if ( plugin ) then
+			if ( !args ) then args = {} end
+			if ( !args[1] ) then
+				args[1] = "\""..ply:Nick().."\""
+			end
+			args[2] = "0"
+			plugin:Call(ply, args)
+		end
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

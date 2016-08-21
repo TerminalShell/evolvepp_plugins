@@ -1,0 +1,128 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Advert implimentation
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Advert"
+PLUGIN.Description = "Add, remove, modify adverts."
+PLUGIN.Author = "SariaFace, Mwr247"
+PLUGIN.Commands = {"advert"}
+PLUGIN.Usage = "<add|remove|list|toggle> [advert id] [r] [g] [b] [interval] [message]"
+PLUGIN.Privileges = { "Advert" }
+
+PLUGIN.Adverts = {}
+
+if SERVER then
+	function PLUGIN:Initialize()
+		evolve.file[string.lower(self.Title)] = string.lower(self.Title)
+		self.Adverts = evolve:LoadData( string.lower( self.Title ) )
+		if ( table.Count(self.Adverts) > 0 ) then
+			for k,v in pairs(self.Adverts) do
+				timer.Create("Advert_"..k, v.Time, 0, function()
+					if (#player.GetAll() > 0) then
+						evolve:Notify(v.Color, v.Msg)
+					end
+				end)
+				if (v.OnState == false) then
+					timer.Pause("Advert_"..k)
+				end
+			end
+		end
+	end
+
+	function PLUGIN:Advert_add(info)
+		info[1] = info[1]:lower()
+		if #info > 6 then
+			info[6] = table.concat(info, " ", 6, #info)
+		elseif #info < 6 then
+			return "Advert: Incorrect arguments for Add"
+		end
+		local ow
+		if self.Adverts[info[1]] then
+			ow = "Overwriting advert \""..self.Adverts[info[1]].."\"."
+		end
+
+		self.Adverts[info[1]] = {
+			["Color"] = Color(tonumber(info[2]),tonumber(info[3]),tonumber(info[4])),
+			["Time"] = info[5],
+			["Msg"] = info[6],
+			["OnState"] = true
+		}
+		timer.Create("Advert_"..info[1], self.Adverts[info[1]].Time, 0, function()
+			if (#player.GetAll() > 0) then
+				evolve:Notify(self.Adverts[info[1]].Color, self.Adverts[info[1]].Msg)
+			end
+		end)
+		evolve:SaveData(string.lower(self.Title), self.Adverts)
+		return ow or "Advert created."
+	end
+	
+	function PLUGIN:Advert_remove(info)
+		if self.Adverts[info[1]] then
+			self.Adverts[info[1]] = nil
+			timer.Remove("Advert_"..info[1])
+		else
+			return "Advert: ID not found."
+		end
+		evolve:SaveData(string.lower(self.Title), self.Adverts)
+		return "Advert: "..info[1].." has been removed."
+	end
+	
+	function PLUGIN:Advert_list()
+		local str = "Registered adverts: "
+		for k,v in pairs(self.Adverts) do
+			str = str..k.." ("..tostring(v.OnState).."), "
+		end
+		return str or "No adverts loaded."
+	end
+	
+	function PLUGIN:Advert_toggle(args)
+		if #args > 2 then return "Advert: Incorrect arguments for toggling" end
+		if self.Adverts[args[1]:lower()] then
+			if !args[2] then
+				self.Adverts[args[1]].OnState= !self.Adverts[args[1]].OnState
+				timer.Toggle("Advert_"..args[1])
+			elseif (args[2]=="1") then
+				self.Adverts[args[1]].OnState = true
+				timer.UnPause("Advert_"..args[1])
+			else
+				self.Adverts[args[1]].OnState = false
+				timer.Pause("Advert_"..args[1])
+			end
+			return "Advert "..args[1].."'s On-State has been set to "..tostring(self.Adverts[args[1]].OnState)
+		else
+			return "Advert: ID not found."
+		end
+	end
+end
+
+function PLUGIN:Call( ply, args )
+	if (SERVER) then
+		if (ply:EV_HasPrivilege( "Advert" )) then
+			local retStr
+			if #args == 0 then
+				evolve:Notify(ply, evolve.colors.red, "Advert Error: No arguments")
+				return
+			end
+			local command = string.lower(args[1])
+			table.remove(args, 1)
+			if ( command == "add" ) then
+				retStr = self:Advert_add(args)
+			elseif ( command == "remove" ) then
+				retStr = self:Advert_remove(args)
+			elseif ( command == "list" ) then
+				retStr = self:Advert_list(args)
+			elseif ( command == "toggle" ) then
+				retStr = self:Advert_toggle(args)
+			else
+				retStr = "Advert: Incorrect command specified"
+			end
+
+			evolve:Notify(ply, evolve.colors.red, "Advert: "..retStr)
+		else
+			evolve:Notify(ply, evolve.colors.red, "You don't not have access to this command")
+		end
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

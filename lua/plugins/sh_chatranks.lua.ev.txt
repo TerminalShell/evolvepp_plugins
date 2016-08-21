@@ -1,0 +1,60 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Chat Ranks
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Chat Ranks"
+PLUGIN.Description = "Displays ranks/rank colors in chat."
+PLUGIN.Author = "Mwr247"
+
+// Set true to show rank title prefixes on names
+PLUGIN.ShowRank = true
+
+// Set true to show rank colors on names
+PLUGIN.ShowColor = false
+
+// Set true to show guest title/color
+PLUGIN.ShowGuest = false
+
+function PLUGIN:OnPlayerChat( ply, txt, teamchat, dead )
+	if table.Count( evolve.ranks ) > 0 then
+		local tab = {}
+
+		if ( dead ) then
+			table.insert( tab, Color( 255, 30, 40 ) )
+			table.insert( tab, "*DEAD* " )
+		end
+
+		if ( teamchat ) then
+			table.insert( tab, Color( 30, 160, 40 ) )
+			table.insert( tab, "(TEAM) " )
+		end
+
+		if ( IsValid( ply ) ) then
+			if ( self.ShowRank and ( self.ShowGuest or ply:EV_GetRank() != "guest" )) then
+				table.insert( tab, evolve.ranks[ ply:EV_GetRank() ].Color )
+				table.insert( tab, "[" .. evolve.ranks[ ply:EV_GetRank() ].Title .. "] " )
+			end
+			if ( self.ShowColor and ( self.ShowGuest or ply:EV_GetRank() != "guest" )) then
+				table.insert( tab, evolve.ranks[ ply:EV_GetRank() ].Color )
+			else
+				table.insert( tab, team.GetColor( ply:Team() ) )
+			end
+			table.insert( tab, ply:Nick() )
+		else
+			if ( self.ShowColor ) then
+				table.insert( tab, evolve.ranks[ ply:EV_GetRank() ].Color )
+			end
+			table.insert( tab, "Console" )
+		end
+
+		table.insert( tab, Color( 255, 255, 255 ) )
+		table.insert( tab, ": " .. txt )
+
+		chat.AddText( unpack( tab ) )
+
+		return true
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

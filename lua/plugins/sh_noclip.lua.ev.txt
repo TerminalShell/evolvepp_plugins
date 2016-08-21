@@ -1,0 +1,79 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Enable noclip for someone
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Noclip"
+PLUGIN.Description = "Enable noclip for a player."
+PLUGIN.Author = "Overv"
+PLUGIN.Commands = {"noclip"}
+PLUGIN.Usage = "[players] [1/0]"
+PLUGIN.Privileges = { "Noclip", "Noclip access" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local players = evolve:FindPlayer( args, ply, true )
+		local enabled = ( tonumber( args[ #args ] ) or 1 ) > 0
+		
+		for _, pl in ipairs( players ) do
+			if ( enabled ) then pl:SetMoveType( MOVETYPE_NOCLIP ) else pl:SetMoveType( MOVETYPE_WALK ) end
+		end
+		
+		if ( #players > 0 ) then
+			if ( enabled ) then
+				evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has noclipped ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, "." )
+			else
+				evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has un-noclipped ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, "." )
+			end
+		else
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayers )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	if ( arg ) then
+		table.insert( players, arg )
+		RunConsoleCommand( evolve.prefix, self.Commands[1], unpack( players ) )
+	else
+		return self.Title, evolve.category.actions, { { "Enable", 1 }, { "Disable", 0 } }
+	end
+end
+
+function PLUGIN:PlayerNoClip( ply )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) or ply:EV_HasPrivilege( self.Privileges[2] ) or ply:EV_IsAdmin() ) then
+		return true
+	end
+	return false
+end
+
+evolve:RegisterPlugin( PLUGIN )
+
+/*-------------------------------------------------------------------------------------------------------------------------
+	Disable noclip for someone
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Unnoclip"
+PLUGIN.Description = "Disable noclip for a player."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"unnoclip"}
+PLUGIN.Usage = "[player]"
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( "Noclip" ) ) then
+		local plugin = evolve:GetPlugin( "Noclip" )
+		if ( plugin ) then
+			if ( !args ) then args = {} end
+			if ( !args[1] ) then
+				args[1] = "\""..ply:Nick().."\""
+			end
+			args[2] = "0"
+			plugin:Call(ply, args)
+		end
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

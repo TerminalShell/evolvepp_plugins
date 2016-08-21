@@ -1,0 +1,148 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Ban a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Ban"
+PLUGIN.Description = "Ban a player."
+PLUGIN.Author = "Overv"
+PLUGIN.Commands = {"ban"}
+PLUGIN.Usage = "<steamid|player> [time=5] [reason]"
+PLUGIN.Privileges = { "Ban", "Permaban" }
+
+function PLUGIN:Call( ply, args )
+	local time = math.Clamp( tonumber( args[2] ) or 5, 0, 10080 )
+	
+	if ( ( time > 0 and ply:EV_HasPrivilege( self.Privileges[1] ) ) or ( time == 0 and ply:EV_HasPrivilege( self.Privileges[2] ) ) ) then
+		/*-------------------------------------------------------------------------------------------------------------------------
+			Get the steam ID to ban
+		-------------------------------------------------------------------------------------------------------------------------*/
+		
+		local steamid, pl
+		
+		if ( evolve:IsSteamID(args[1] or "") ) then
+			steamid = args[1]
+			pl = evolve:GetBySteamID( steamid )
+		else
+			pl = evolve:FindPlayer( args[1] )
+			
+			if ( #pl > 1 ) then
+				evolve:Notify( ply, evolve.colors.white, "Did you mean ", evolve.colors.red, evolve:CreatePlayerList( pl, true ), evolve.colors.white, "?" )
+				
+				return
+			elseif ( #pl == 1 ) then
+				pl = pl[1]
+				steamid = pl:SteamID()
+			end
+		end
+		
+		/*-------------------------------------------------------------------------------------------------------------------------
+			Make sure the player exists and we're allowed to ban it
+		-------------------------------------------------------------------------------------------------------------------------*/
+		
+		if ( !steamid or ( tonumber( evolve.ranks[ ply:EV_GetRank() ].Immunity ) <= tonumber( evolve.ranks[ evolve:GetProperty( steamid, "Rank", "guest" ) ].Immunity ) and ply != NULL ) ) then
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayers2 )
+			return
+		end
+		
+		/*-------------------------------------------------------------------------------------------------------------------------
+			Gather data and perform ban
+		-------------------------------------------------------------------------------------------------------------------------*/
+		
+		local length = math.Clamp( tonumber( args[2] ) or 5, 0, 10080 ) * 60
+		local reason = table.concat( args, " ", 3 )
+		if ( #reason == 0 ) then reason = "No reason specified" end
+		local nick = evolve:GetProperty( steamid, "Nick" )
+		if nick==nil then nick=steamid end
+		
+		evolve:Ban( steamid, length, reason, ply:SteamID() )
+		
+		if ( length == 0 ) then
+			evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " banned ", evolve.colors.red, nick, evolve.colors.white, " permanently (" .. reason .. ")." )
+		else
+			evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " banned ", evolve.colors.red, nick, evolve.colors.white, " for " .. length / 60 .. " minutes (" .. reason .. ")." )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+if ( SERVER ) then
+	function PLUGIN:InitPostEntity()
+		for steamid, data in pairs( evolve.bans ) do
+			if ( evolve:IsBanned( steamid ) ) then
+				game.ConsoleCommand( "banid " .. ( data.banend - evolve:Time() ) / 60 .. " " .. steamid .. "\n" )
+			end
+		end
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	if ( arg ) then
+		RunConsoleCommand( evolve.prefix, self.Commands[1], players[1], arg )
+	else
+		return self.Title, evolve.category.administration, {
+			{ "5 minutes", "5" },
+			{ "10 minutes", "10" },
+			{ "15 minutes", "15" },
+			{ "30 minutes", "30" },
+			{ "1 hour", "60" },
+			{ "2 hours", "120" },
+			{ "4 hours", "240" },
+			{ "12 hours", "720" },
+			{ "One day", "1440" },
+			{ "Two days", "2880" },
+			{ "One week", "10080" },
+			{ "Two weeks", "20160" },
+			{ "One month", "43200" },
+			{ "One year", "525600" },
+			{ "Permanently", "0" }
+		}, "Time"
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )
+
+/*-------------------------------------------------------------------------------------------------------------------------
+	Unban a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Unban"
+PLUGIN.Description = "Unban a player."
+PLUGIN.Author = "Overv"
+PLUGIN.Commands = {"unban"}
+PLUGIN.Usage = "<steamid|player>"
+PLUGIN.Privileges = { "Unban" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		if ( args[1] ) then
+			local steamID
+			
+			if ( evolve:IsSteamID(args[1] or "") ) then
+				steamID = args[1]
+			else
+				steamID = evolve:SteamIDByProperty( "Nick", args[1], false )
+			end
+			if ( steamID and evolve:IsBanned( steamID ) ) then
+				evolve:UnBan( steamID, ply:SteamID() )
+				
+				local nick=evolve:GetProperty( steamID, "Nick" )
+				if nick==nil then nick=steamid end
+				
+				evolve:Notify( evolve.colors.blue, ply:Nick(), color_white, " has unbanned ", evolve.colors.red, evolve:GetProperty( steamID, "Nick" ), color_white, "." )
+			elseif ( steamID ) then
+				evolve:Notify( ply, evolve.colors.red, evolve:GetProperty( steamID, "Nick" ) .. " is not currently banned." )
+			else
+				evolve:Notify( ply, evolve.colors.red, "No matching players found!" )
+			end
+		else
+			evolve:Notify( ply, evolve.colors.red, "You need to specify a SteamID or nickname!" )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

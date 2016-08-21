@@ -1,0 +1,36 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Scale gravity for a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Gravity"
+PLUGIN.Description = "Set gravity for a player ."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"gravity"}
+PLUGIN.Usage = "[players] [scale (1 is normal) or blank to default]"
+PLUGIN.Privileges = { "Gravity" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local players = evolve:FindPlayer( args, ply, true )
+		local gravity = tonumber( args[ #args ] ) or 1
+		
+		for _, pl in ipairs( players ) do
+			pl:SetGravity(gravity)
+		end
+		
+		if ( #players > 0 ) then
+			evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has scaled the gravity of ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, " to " .. gravity .. "." )
+		else
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayers )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	return self.Title, evolve.category.actions, { { "Default", 1 }, { "Double", 2 }, { "Half", 0.5 }, { "Zero", 0.0001 }, { "Negative", -1 } }
+end
+
+evolve:RegisterPlugin( PLUGIN )

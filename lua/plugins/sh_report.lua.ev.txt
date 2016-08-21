@@ -1,0 +1,113 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Report something
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Report"
+PLUGIN.Description = "Report a player for misconduct."
+PLUGIN.Author = "Overv, Mwr247"
+PLUGIN.Commands = {"report"}
+PLUGIN.Usage = "<player> <reason>"
+PLUGIN.Privileges = { "Report" }
+
+function PLUGIN:Initialize()
+	evolve.file[string.lower(self.Title)] = string.lower(self.Title)
+	self.reports = evolve:LoadData(string.lower(self.Title))
+end
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local pl = evolve:FindPlayer( args[1] )
+
+		if ( #pl > 1 ) then
+			evolve:Notify( ply, evolve.colors.white, "Did you mean ", evolve.colors.red, evolve:CreatePlayerList( pl, true ), evolve.colors.white, "?" )
+		elseif ( #pl == 1 ) then
+			if ( #args > 1 ) then
+				local msg = table.concat( args, " ", 2 )
+				local reportinfo = {}
+				reportinfo.Nick = pl[1]:Nick()
+				reportinfo.RepNick = ply:Nick()
+				reportinfo.RepSteamID = ply:SteamID()
+				reportinfo.Date = tostring(evolve:Time()) --os.date("!%m-%d-%Y, %l:%M:%S %p") -- ,(os.time()-60*60*5)
+				reportinfo.Reason = msg
+				
+				if self.reports[pl[1]:SteamID()] == nil then
+					self.reports[pl[1]:SteamID()] = {}
+				end
+				table.insert(self.reports[pl[1]:SteamID()],reportinfo)
+				
+				if SERVER then
+					evolve:SaveData(string.lower(self.Title),self.reports)
+				end
+
+				for _, admin in pairs( player.GetAll() ) do
+					if ( admin:EV_IsAdmin() ) then evolve:Notify( admin, evolve.colors.red, ply:Nick() .. " reported " .. pl[1]:Nick() .. " with reason: ", evolve.colors.white, msg ) end
+				end
+			else
+				evolve:Notify( ply, evolve.colors.red, "No reason specified!" )
+			end
+		else
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayersnoimmunity )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )
+
+/*-------------------------------------------------------------------------------------------------------------------------
+	Read Reports
+-------------------------------------------------------------------------------------------------------------------------*/
+/*
+local PLUGIN = {}
+PLUGIN.Title = "Read Reports"
+PLUGIN.Description = "Read player reports."
+PLUGIN.Author = "Mwr247"
+PLUGIN.ChatCommand = "reports"
+PLUGIN.Usage = "<read/delete> <player> <id>"
+PLUGIN.Privileges = { "Read Reports" }
+
+PLUGIN.reports = evolve:LoadData(PLUGIN.Title)
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( "Report" ) ) then
+		local pl = evolve:FindPlayer( args[1] )
+
+		if ( #pl > 1 ) then
+			evolve:Notify( ply, evolve.colors.white, "Did you mean ", evolve.colors.red, evolve:CreatePlayerList( pl, true ), evolve.colors.white, "?" )
+		elseif ( #pl == 1 ) then
+			if ( #args > 1 ) then
+				local msg = table.concat( args, " ", 2 )
+				local reportinfo = {}
+				reportinfo.Nick = pl[1]:Nick()
+				reportinfo.RepNick = ply:Nick()
+				reportinfo.RepSteamID = ply:SteamID()
+				reportinfo.Date = tostring(evolve:Time()) --os.date("!%m-%d-%Y, %l:%M:%S %p") -- ,(os.time()-60*60*5)
+				reportinfo.Reason = msg
+				
+				if self.reports[pl[1]:SteamID()] == nil then
+					self.reports[pl[1]:SteamID()] = {}
+				end
+				table.insert(self.reports[pl[1]:SteamID()],reportinfo)
+				
+				if SERVER then
+					evolve:SaveData(self.filename,self.reports)
+				end
+
+				for _, admin in ipairs( player.GetAll() ) do
+					if ( admin:EV_IsAdmin() ) then evolve:Notify( admin, evolve.colors.red, ply:Nick() .. " reported " .. pl[1]:Nick() .. " with reason: ", evolve.colors.white, msg ) end
+				end
+			else
+				evolve:Notify( ply, evolve.colors.red, "No reason specified!" )
+			end
+		else
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayersnoimmunity )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )
+*/

@@ -1,0 +1,92 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Spectate a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Spectate"
+PLUGIN.Description = "Spectate a player."
+PLUGIN.Author = "Overv, Mwr247"
+PLUGIN.Commands = {"spectate","spec"}
+PLUGIN.Usage = "[player|blank to disable]"
+PLUGIN.Privileges = { "Spectate" }
+
+function PLUGIN:Call( pl, args )
+	if ( pl:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local players = evolve:FindPlayer( args, pl )
+		
+		if ( #args > 0 ) then
+			if ( #players == 1 ) then
+				pl.EV_SpectatePos = pl:GetPos()
+				pl:SetNWBool( "EV_Spectating", true )
+				
+				pl:Spectate( OBS_MODE_IN_EYE )
+				pl:SpectateEntity( players[1] )
+				pl:SetMoveType( MOVETYPE_OBSERVER )
+				pl.ev_specteam = pl:Team()
+				pl:SetTeam( 3 )
+				
+				pl.EV_Weapons = {}
+				for _, wp in pairs( pl:GetWeapons() ) do
+					table.insert(pl.EV_Weapons,wp:GetClass())
+				end
+				pl:StripWeapons()
+			elseif ( #players > 1 or players[1] == pl ) then
+				evolve:Notify( pl, evolve.colors.red, "You can not spectate multiple players or yourself." )
+			else
+				evolve:Notify( pl, evolve.colors.red, evolve.constants.noplayers )
+			end
+		elseif ( pl:GetNWBool( "EV_Spectating", true ) ) then
+			pl:Spectate( OBS_MODE_NONE )
+			pl:UnSpectate()
+			pl:SetMoveType( MOVETYPE_WALK )
+			
+			pl.ev_specteam = pl.ev_specteam or 3
+			pl:SetTeam( pl.ev_specteam )
+			
+			pl:SetNWBool( "EV_Spectating", false )
+			
+			pl:Spawn()
+			timer.Simple( 0.05, function() pl:SetPos( pl.EV_SpectatePos ) pl.EV_SpectatePos = nil end )
+			for _, wp in ipairs( pl.EV_Weapons ) do
+				pl:Give(wp)
+			end
+		end
+	else
+		evolve:Notify( pl, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:EV_ShowPlayerName( pl )
+	if ( pl:GetNWBool( "EV_Spectating", false ) ) then return false end
+end
+
+function PLUGIN:Menu( arg, players )
+	return self.Title, evolve.category.actions
+end
+
+evolve:RegisterPlugin( PLUGIN )
+
+/*-------------------------------------------------------------------------------------------------------------------------
+	Unspectate a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Unspectate"
+PLUGIN.Description = "Unspectate a player."
+PLUGIN.Author = "Overv"
+PLUGIN.Commands = {"unspectate","unspec"}
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( "Spectate" ) ) then
+		local plugin = evolve:GetPlugin( "Spectate" )
+		if ( plugin ) then
+			plugin:Call(ply, {})
+		end
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	return self.Title, evolve.category.actions
+end
+
+evolve:RegisterPlugin( PLUGIN )

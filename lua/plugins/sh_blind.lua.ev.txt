@@ -1,0 +1,79 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Blind a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Blind"
+PLUGIN.Description = "Blind a player."
+PLUGIN.Author = "Overv"
+PLUGIN.Commands = {"blind"}
+PLUGIN.Usage = "[player] [1/0]"
+PLUGIN.Privileges = { "Blind" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local players = evolve:FindPlayer( args, ply, true )
+		local enabled = ( tonumber( args[ #args ] ) or 1 ) > 0
+		
+		for _, pl in ipairs( players ) do
+			pl:SetNWBool( "EV_Blinded", enabled )
+		end
+		
+		if ( #players > 0 ) then
+			if ( enabled ) then
+				evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has blinded ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, "." )
+			else
+				evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has unblinded ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, "." )
+			end
+		else
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayers )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:HUDPaint()
+	if ( LocalPlayer():GetNWBool( "EV_Blinded", false ) ) then
+		surface.SetDrawColor( 0, 0, 0, 255 )
+		surface.DrawRect( 0, 0, ScrW(), ScrH() )
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	if ( arg ) then
+		table.insert( players, arg )
+		RunConsoleCommand( evolve.prefix, self.Commands[1], unpack( players ) )
+	else
+		return self.Title, evolve.category.punishment, { { "Enable", 1 }, { "Disable", 0 } }
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )
+
+/*-------------------------------------------------------------------------------------------------------------------------
+	Unblind a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Unblind"
+PLUGIN.Description = "Unblind a player."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"unblind"}
+PLUGIN.Usage = "[player]"
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( "Blind" ) ) then
+		local plugin = evolve:GetPlugin("Blind")
+		if ( plugin ) then
+			if ( !args ) then args = {} end
+			if ( !args[1] ) then
+				args[1] = "\""..ply:Nick().."\""
+			end
+			args[2] = "0"
+			plugin:Call(ply, args)
+		end
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

@@ -1,0 +1,72 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Trip a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Trip"
+PLUGIN.Description = "Trip a player."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"trip"}
+PLUGIN.Usage = "<player> [time]"
+PLUGIN.Privileges = { "Trip" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local players = evolve:FindPlayer( args, ply, true )
+		local time = tonumber( args[ #args ] ) or 3
+		
+		for _, pl in ipairs( players ) do
+			pl:GiveStatus('knockdown',time)
+		end
+		
+		if ( #players > 0 ) then
+			if ( time != 0 ) then
+				evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has tripped ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, " for ", evolve.colors.red, ""..time, evolve.colors.white, " seconds." )
+			else
+				evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has untripped ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, "." )
+			end
+		else
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayers )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	if ( arg ) then
+		table.insert( players, arg )
+		RunConsoleCommand( evolve.prefix, self.Commands[1], unpack( players ) )
+	else
+		return self.Title, evolve.category.punishment, { { "1 Second", 1 }, { "1 Second", 3 }, { "1 Second", 5 }, { "1 Second", 10 }, { "Untrip", 0 } }
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )
+
+/*-------------------------------------------------------------------------------------------------------------------------
+	Untrip a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Untrip"
+PLUGIN.Description = "Untrip a player."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"untrip"}
+PLUGIN.Usage = "<player>"
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( "Trip" ) ) then
+		local plugin = evolve:GetPlugin( "Trip" )
+		if ( plugin ) then
+			if ( !args ) then args = {} end
+			if ( !args[1] ) then
+				args[1] = "\""..ply:Nick().."\""
+			end
+			args[2] = "0"
+			plugin:Call(ply, args)
+		end
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

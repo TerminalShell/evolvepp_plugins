@@ -1,0 +1,72 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Load the MOTD
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "MOTD"
+PLUGIN.Description = "View the message of the day."
+PLUGIN.Author = "Bandit Kitteh & Mwr247"
+PLUGIN.Commands = {"motd"}
+PLUGIN.Privileges = { "MOTD", "MOTD autoopen" }
+PLUGIN.MotdTitle = "Evolve++ - MOTD"
+PLUGIN.MotdURL = "URL_HERE"
+PLUGIN.Disabled = true
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		if SERVER then
+			net.Start("EV_OpenMOTD")
+			net.Send( ply )
+		end
+		evolve:Notify( ply, evolve.colors.white, "MOTD Opened." )
+	end
+end
+
+if SERVER then
+	util.AddNetworkString("EV_OpenMOTD")
+else
+	net.Receive("EV_OpenMOTD", function( len )
+		if len then
+			PLUGIN:motd()
+		end
+	end )
+	
+	function PLUGIN:motd()
+		local w=ScrW()*0.8
+		local h=ScrH()*0.8
+		local b=5
+		self.Frame = vgui.Create("DFrame")
+		self.Frame:SetSize(w, h)
+		self.Frame:Center()
+		self.Frame:SetTitle(evolve:GetPlugin("MOTD").MotdTitle)
+		self.Frame:MakePopup(true)
+		self.Frame:SetMouseInputEnabled(true)
+			 
+		self.html = vgui.Create("DHTML", self.Frame)
+		self.html:SetPos(b, 20+b)
+		self.html:SetSize(w-b*2, h-65-b*2)
+		self.html:OpenURL(evolve:GetPlugin("MOTD").MotdURL)
+		
+		self.button = vgui.Create("DButton", self.Frame)
+		self.button:SetPos(b, h-50)
+		self.button:SetSize(w-b*2, 50)
+		self.button:SetText("Close")
+		self.button.DoClick = function()
+			PLUGIN.Frame:Remove()
+		end
+	end
+end
+
+function PLUGIN:PlayerInitialSpawn( ply )
+	if ( ply:EV_HasPrivilege( self.Privileges[2] ) ) then
+		if SERVER then
+			timer.Simple(3,function()
+				if ( evolve:IsPlugin('MOTD') ) then
+					ply:SendLua("evolve.plugins['MOTD']:motd()")
+				end
+			end)
+		end
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

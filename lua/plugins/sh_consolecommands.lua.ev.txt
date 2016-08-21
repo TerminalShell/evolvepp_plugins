@@ -1,0 +1,203 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Provides console commands
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Console Commands"
+PLUGIN.Description = "Provides console commands to run plugins."
+PLUGIN.Author = "Overv, Mwr247"
+
+function PLUGIN:GetArguments( allargs )
+	local newargs = {}
+	for i = 2, #allargs do
+		table.insert( newargs, allargs[i] )
+	end
+	return newargs
+end
+
+function PLUGIN:Usage( str )
+	local tab={}
+	local pat="[%[<][%w|/%-_() ]+[%]>]"
+	for word in string.gmatch(str,pat) do
+		if word!=" " then
+			table.insert(tab,string.lower(word))
+		end
+	end
+	return tab
+end
+
+function PLUGIN:Suggest( str )
+	local tab={}
+	str=string.sub(str,2,-2)
+	if string.match(str,"player") then
+		for _,val in pairs(player.GetAll()) do
+			table.insert(tab,string.Explode(" ",val:Nick())[1])
+		end
+		table.sort(tab)
+		table.insert(tab,"*")
+		table.insert(tab,"@")
+		table.insert(tab,"!@")
+		for k,val in pairs(team.GetAllTeams()) do
+			if k > 1 and team.NumPlayers( k ) > 0 then
+				table.insert(tab,"#"..string.lower(string.Replace(team.GetName( k )," ","")))
+				table.insert(tab,"!#"..string.lower(string.Replace(team.GetName( k )," ","")))
+			end
+		end
+	end
+	if string.match(str,"steamid") then
+		for _,val in pairs(player.GetHumans()) do
+			table.insert(tab,val:SteamID())
+		end
+		table.sort(tab)
+	end
+	if string.match(str,"map") then
+		for _,val in pairs(file.Find("maps/*.bsp","GAME")) do
+			table.insert(tab,string.StripExtension(val))
+		end
+		table.sort(tab)
+	end
+	if string.match(str,"plugin") then
+		for _,val in pairs(evolve.plugins) do
+			table.insert(tab,val.Title)
+		end
+		table.sort(tab)
+	end
+	if string.match(str,"command") then
+		for _,val in pairs(evolve.plugins) do
+			if val.Commands then
+				table.insert(tab,val.Commands[1])
+			end
+		end
+		table.sort(tab)
+	end
+	if string.match(str,"weapon") then
+		for _,val in pairs(weapons.GetList()) do
+			if val.ClassName then
+				table.insert(tab,val.ClassName)
+			end
+		end
+		table.sort(tab)
+	end
+	return tab
+end
+
+if SERVER then
+	PLUGIN.CCommand = function( ply, com, args )
+		if ( #args == 0 ) then return end
+		
+		local command = args[1]
+		local cargs = PLUGIN:GetArguments( args )
+		
+		if SERVER then
+			evolve:Log( evolve:PlayerLogStr( ply ) .. " ran command '" .. command .. "' with arguments '" .. table.concat( cargs, " " ) .. "' via console." )
+		end
+		
+		if ( evolve:GetPluginByProperty('Commands',command, true) ) then
+			evolve:GetPluginByProperty('Commands',command, true):Call( ply, cargs )
+			return ""
+		end
+		
+		evolve:Message( "Unknown command '" .. command .. "'." )
+		return nil
+	end
+	
+	PLUGIN.CCommandSilent = function( ply, com, args )
+		if ( #args == 0 ) then return end
+		
+		evolve.SilentNotify = true
+		
+		local command = args[1]
+		local cargs = PLUGIN:GetArguments( args )
+		
+		if SERVER then
+			evolve:Log( evolve:PlayerLogStr( ply ) .. " ran command '" .. command .. "' with arguments '" .. table.concat( cargs, " " ) .. "' via console." )
+		end
+		
+		if ( evolve:GetPluginByProperty('Commands',command, true) ) then
+			evolve:GetPluginByProperty('Commands',command, true):Call( ply, cargs )
+			return ""
+		end
+		
+		evolve:Message( "Unknown command '" .. command .. "'." )
+		
+		evolve.SilentNotify = false
+		
+		return nil
+	end
+else
+	PLUGIN.CCommand = function( ply, com, args )
+		RunConsoleCommand( evolve.prefix.."_server", unpack( args ) )
+	end
+	
+	PLUGIN.CCommandSilent = function( ply, com, args )
+		RunConsoleCommand( evolve.prefixSilent.."_server", unpack( args ) )
+	end
+	
+	PLUGIN.CCSuggest = function( com, args )
+		local cargs = string.Explode(" ", args)
+		table.remove(cargs,1)
+		local command = cargs[1]
+		local full = false
+		if ( cargs[2] ) then full = true end
+		local suggest = {}
+		local temp
+		
+		for k, v in pairs( evolve.plugins ) do
+			if ( v.Commands and (v.Privileges == nil or LocalPlayer():EV_HasPrivilege(v.Privileges[1])) ) then
+				for _, w in pairs( v.Commands ) do
+					if ( w and ( full and w == string.lower( command ) ) or ( !full and string.sub( w, 1, #command ) == string.lower( command ) ) ) then
+						if v.Usage then
+							local params=PLUGIN:Usage(v.Usage)
+							if #params>0 and full then
+								local done=""
+								for s, u in pairs( params ) do
+									local sugg=PLUGIN:Suggest( u )
+									local rem=""
+									for i=s+1,#params do
+										rem=rem.." "..params[i]
+									end
+									if #sugg>0 then
+										if s>=#cargs then break end
+										for _, t in pairs( sugg ) do
+											if (string.lower(t) == string.lower( cargs[s+1] ) or string.sub( string.lower(t), 1, #cargs[s+1] ) == string.lower( cargs[s+1] ) ) then
+												if ( s+1==#cargs ) then
+													table.insert( suggest, com .. " " .. w .. " " .. done .. t .. rem )
+												elseif s+1<#cargs then
+													done=done..t.." "
+												end
+											end
+										end
+									else
+										if #suggest==0 then
+											table.insert( suggest, com .. " " .. w .. " " .. v.Usage or "" )
+										end
+									end
+								end
+							else
+								table.insert( suggest, com .. " " .. w .. " " .. v.Usage or "" )
+							end
+						else
+							table.insert( suggest, com .. " " .. w )
+						end
+					end
+				end
+			end
+		end
+		if !full then
+			table.sort(suggest)
+		end
+		return suggest
+	end
+end
+
+if SERVER then
+	concommand.Add( evolve.prefix.."_server", PLUGIN.CCommand)
+	concommand.Add( evolve.prefix, PLUGIN.CCommand)
+	concommand.Add( evolve.prefixSilent.."_server", PLUGIN.CCommandSilent)
+	concommand.Add( evolve.prefixSilent, PLUGIN.CCommandSilent)
+else
+	concommand.Add( evolve.prefix, PLUGIN.CCommand, PLUGIN.CCSuggest)
+	concommand.Add( evolve.prefixSilent, PLUGIN.CCommandSilent, PLUGIN.CCSuggest)
+end
+
+evolve:RegisterPlugin( PLUGIN )

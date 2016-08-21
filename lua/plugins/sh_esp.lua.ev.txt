@@ -1,0 +1,78 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Runs ESP
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "ESP"
+PLUGIN.Description = "Displays the name and health of players."
+PLUGIN.Author = "Mwr247, Mr. Wolf"
+PLUGIN.Commands = {"esp"}
+PLUGIN.Usage = "<mode>"
+PLUGIN.Privileges = { "ESP" }
+
+if CLIENT then
+
+	LocalPlayer():SetNWInt("esp", 0)
+	
+	function espActive()
+		if LocalPlayer():GetNWInt("esp") == 0 then return end
+		if LocalPlayer():GetNWInt("esp") < 3 then
+			for k, v in pairs(player.GetAll()) do
+				if v != LocalPlayer() then
+					tracedata={}
+					tracedata.start=LocalPlayer():EyePos()
+					tracedata.endpos=v:EyePos()
+					trace=util.TraceLine(tracedata)
+					if LocalPlayer():GetNWInt("esp") == 2 or !trace.HitWorld then
+						espPos = v:EyePos()
+						espPos.z = espPos.z + 15 + math.Round(LocalPlayer():EyePos():Distance(v:EyePos())/45)
+						espPos = espPos:ToScreen()
+						espShowHealth=(v:Health()+v:Armor())*2.55
+						if espShowHealth>255 then espShowHealth=255 end
+						espHealthR=0
+						espHealthG=255
+						if(espShowHealth<=0) then espHealthR=255 espHealthG=0
+						elseif(espShowHealth<=126) then espHealthR=255 espHealthG=espShowHealth*2
+						else espHealthR=(255-espShowHealth)*2 espHealthG=255 end
+						if(v:GetFriendStatus()=="friend") then draw.DrawText("+", "TargetIDSmall", espPos.x, espPos.y-13, team.GetColor(v:Team()), 1) end
+						draw.DrawText(v:Nick(), "TargetIDSmall", espPos.x, espPos.y, team.GetColor(v:Team()), 1)
+						draw.DrawText(v:Health(), "TargetIDSmall", espPos.x, espPos.y + 13, Color(espHealthR, espHealthG, 0, 255), 1)
+					end
+				end
+			end
+		elseif LocalPlayer():GetNWInt("esp") == 3 then
+			for k,v in pairs(ents.GetAll()) do
+				if v:IsValid() then
+					entloc = v:GetPos()
+					entloc = entloc:ToScreen()
+					entshow = v:GetClass()
+					draw.DrawText(entshow.."("..v:EntIndex()..")", "BudgetLabel", entloc.x, entloc.y-15, Color(255,0,0,255),1)
+					draw.RoundedBox( 2, entloc.x-1, entloc.y-1, 5, 5, Color(0,0,0,255))
+					draw.RoundedBox( 2, entloc.x, entloc.y, 3, 3, Color(255,0,0,255))
+				end
+			end
+		end
+	end
+
+	hook.Add("HUDPaint", "ESP", espActive)
+end
+
+function PLUGIN:Call( ply, args )
+	if CLIENT then return end
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		if #args == 0 then
+			if ply:GetNWInt("esp") > 0 then
+				ply:SetNWInt("esp", 0)
+				ply:ChatPrint('ESP is OFF')
+			else
+				ply:SetNWInt("esp", 1)
+				ply:ChatPrint('ESP is ON')
+			end
+		else
+			ply:SetNWInt("esp", tonumber(args[1]))
+			ply:ChatPrint('ESP is set to '..tonumber(args[1]))
+		end
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

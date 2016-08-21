@@ -1,0 +1,83 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Mute a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Mute"
+PLUGIN.Description = "Mute a player from speaking in chat."
+PLUGIN.Author = "Overv"
+PLUGIN.Commands = {"mute"}
+PLUGIN.Usage = "[player] [1/0]"
+PLUGIN.Privileges = { "Mute" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local players = evolve:FindPlayer( args, ply, true )
+		local enabled = ( tonumber( args[ #args ] ) or 1 ) > 0
+
+		for _, pl in ipairs( players ) do
+			pl.EV_Muted = enabled
+		end
+
+		if ( #players > 0 ) then
+			if ( enabled ) then
+				evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has muted ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, "." )
+			else
+				evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has unmuted ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, "." )
+			end
+		else
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayers )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:PlayerSay( ply, msg )
+	if ( ply.EV_Muted ) then return "" end
+end
+
+--Disables players voice! ~MadDog
+function PLUGIN:PlayerCanHearPlayersVoice( Listener, Talker )
+	if (!IsValid(Talker)) then return end
+	if (Talker.EV_Muted) then return false end
+end
+
+function PLUGIN:Menu( arg, players )
+	if ( arg ) then
+		table.insert( players, arg )
+		RunConsoleCommand( evolve.prefix, self.Commands[1], unpack( players ) )
+	else
+		return self.Title, evolve.category.punishment, { { "Enable", 1 }, { "Disable", 0 } }
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )
+
+
+/*-------------------------------------------------------------------------------------------------------------------------
+	Unmute a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Unmute"
+PLUGIN.Description = "Unmute a player."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"unmute"}
+PLUGIN.Usage = "[player]"
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( "Mute" ) ) then
+		local plugin = evolve:GetPlugin( "Mute" )
+		if ( plugin ) then
+			if ( !args ) then args = {} end
+			if ( !args[1] ) then
+				args[1] = "\""..ply:Nick().."\""
+			end
+			args[2] = "0"
+			plugin:Call(ply, args)
+		end
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

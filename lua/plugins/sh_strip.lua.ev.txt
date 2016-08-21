@@ -1,0 +1,49 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Strip a player's weapons
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Strip Weapons"
+PLUGIN.Description = "Strip a player's weapon(s)."
+PLUGIN.Author = "Overv & Mwr247"
+PLUGIN.Commands = {"strip"}
+PLUGIN.Usage = "[player] [weapon]"
+PLUGIN.Privileges = { "Strip" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local players = evolve:FindPlayer( args, ply )
+		
+		if ( args[2] ) then
+			for _, pl in ipairs( players ) do
+				pl:StripWeapon(args[2])
+			end
+		else
+			for _, pl in ipairs( players ) do
+				pl:StripWeapons()
+			end
+		end
+		
+		if ( #players > 0 ) then
+			if ( args[2] ) then
+				evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has stripped the weapon ", evolve.colors.red, args[2], evolve.colors.white, " from ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, "." )
+			else
+				evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has stripped the weapons of ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, "." )
+			end
+		else
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayers )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	if ( arg ) then
+		RunConsoleCommand( evolve.prefix, self.Commands[1], unpack( players ) )
+	else
+		return self.Title, evolve.category.punishment
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

@@ -1,0 +1,42 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Imitate a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Imitate"
+PLUGIN.Description = "Say something as another player."
+PLUGIN.Author = "Overv"
+PLUGIN.Commands = {"imitate","im"}
+PLUGIN.Usage = "<player> <message>"
+PLUGIN.Privileges = { "Imitate" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then	
+		local players = evolve:FindPlayer( args[1] )
+		local msg = table.concat( args, " ", 2 )
+		
+		for _, pl in ipairs( players ) do
+			if ( #msg > 0 ) then
+				umsg.Start( "EV_Imitate" )
+					umsg.Entity( pl )
+					umsg.String( msg )
+					umsg.Bool( pl:IsBot() or pl:Alive() )
+				umsg.End()
+			else
+				evolve:Notify( ply, evolve.colors.red, "No message specified." )
+			end
+		end
+		if ( #players == 0 ) then
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayers )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+usermessage.Hook( "EV_Imitate", function( um )
+	local ply = um:ReadEntity()
+	hook.Call( "OnPlayerChat", nil, ply, um:ReadString(), false, !um:ReadBool() )
+end )
+
+evolve:RegisterPlugin( PLUGIN )

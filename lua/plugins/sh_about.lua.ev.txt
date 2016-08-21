@@ -1,0 +1,57 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Framework and plugin information
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "About"
+PLUGIN.Description = "Information about the admin system and it's plugins."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = { "about", "help" }
+PLUGIN.Usage = "<command|blank>"
+PLUGIN.Version = "1.0"
+PLUGIN.Disabled = false
+
+function PLUGIN:Call( ply, args )
+	if ( args[1] and args[1] != "" ) then
+		local command = args[1]
+		local plugin = evolve:GetPluginByProperty("Commands",command)
+		if ( plugin ) then
+			if ( !plugin.Privileges or ply:EV_HasPrivilege(plugin.Privileges[1]) ) then
+				local version = tostring(plugin.Version) or "1.0"
+				local author = plugin.Author or "Unknown"
+				evolve:Notify( ply, evolve.colors.red, plugin.Title, evolve.colors.white, ", version ", evolve.colors.red, tostring(version), evolve.colors.white, ", by ", evolve.colors.blue, author, evolve.colors.white, "." )
+				if ( plugin.Description ) then
+					evolve:Notify( ply, evolve.colors.red, "Description: ", evolve.colors.white, plugin.Description )
+				end
+				if ( plugin.Commands and plugin.Usage ) then
+					local cc = plugin.Commands
+					if ( type(plugin.Commands) == "table" ) then
+						cc = plugin.Commands[1]
+					end
+					evolve:Notify( ply, evolve.colors.red, "Usage: ", evolve.colors.white, " "..evolve.chatPrefix[1]..cc.." "..plugin.Usage )
+				end
+				if ( plugin.Gamemodes ) then
+					local gm = ""
+					if ( type(plugin.Gamemodes) == "table" ) then
+						for i=1,table.Count(plugin.Gamemodes) do
+							if ( i != 1 ) then gm = gm..", " end
+							gm = gm .. plugin.Gamemodes[i]
+						end
+					else
+						gm = plugin.Gamemodes
+					end
+					evolve:Notify( ply, evolve.colors.red, "Gamemodes: ", evolve.colors.white, gm )
+				end
+			else
+				evolve:Notify( ply, evolve.colors.white, "You are not allowed to use that plugin." )
+			end
+		else
+			evolve:Notify( ply, evolve.colors.white, "Plugin \"", evolve.colors.red, command, evolve.colors.white, "\" not found." )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.white, "This server is running ", evolve.colors.red, evolve.title, evolve.colors.white, " version ", evolve.colors.red, evolve.version, evolve.colors.white, " by ", evolve.colors.blue, "Mwr247", evolve.colors.white, "." )
+		evolve:Notify( ply, evolve.colors.white, "Based on ", evolve.colors.red, "Evolve", evolve.colors.white, " by ", evolve.colors.blue, "Overv", evolve.colors.white, ", ported by ", evolve.colors.blue, "Northdegree", evolve.colors.white, "." )
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

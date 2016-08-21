@@ -1,0 +1,41 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Add points to a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Points"
+PLUGIN.Description = "Give a player points."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"points"}
+PLUGIN.Usage = "[player] [points]"
+PLUGIN.Privileges = { "ZS Points" }
+PLUGIN.Gamemodes = { "zombiesurvival" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local players = evolve:FindPlayer( args, ply, true )
+    local points = math.Clamp( tonumber( args[ #args ] ) or 1, -2147483648, 2147483647 )
+		
+		for _, pl in pairs( players ) do
+			pl:AddPoints(points)
+		end
+		
+		if ( #players > 0 ) then
+			evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has given ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, " " .. points .. " points." )
+		else
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayers )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	if ( arg ) then
+		RunConsoleCommand( evolve.prefix, self.Commands[1], unpack( players ) )
+	else
+		return self.Title, evolve.category.actions
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

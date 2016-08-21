@@ -1,0 +1,26 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	SWEP Restriction
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "SWEP Restriction"
+PLUGIN.Description = "Restricts SWEP Spawning"
+PLUGIN.Author = "Helix Nebula"
+PLUGIN.Privileges = { "SWEP" }
+PLUGIN.Gamemodes = { "sandbox_derived" }
+
+function PLUGIN:PlayerGiveSWEP( ply, class, weapon )
+	return ply:EV_HasPrivilege( self.Privileges[1] )
+end
+
+function PLUGIN:PlayerSpawnSWEP( ply, class, weapon )
+	return ply:EV_HasPrivilege( self.Privileges[1] )
+end
+
+function PLUGIN:PlayerSpawnSENT( ply, name )
+	if string.find(name, "weapon_") then
+		return ply:EV_HasPrivilege( self.Privileges[1] )
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

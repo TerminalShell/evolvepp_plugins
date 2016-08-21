@@ -1,0 +1,41 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Player Who
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Who"
+PLUGIN.Description = "Print user details to console."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"who"}
+PLUGIN.Privileges = { "Who" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		if ( ply:IsPlayer() ) then
+			evolve:Notify( ply, evolve.colors.red, "Who data dumped to console." )
+			ply:PrintMessage( HUD_PRINTCONSOLE,"---------------------------------------------------------------------")
+			ply:PrintMessage( HUD_PRINTCONSOLE, GetHostName().." | "..gmod.GetGamemode().Name.." | Map: "..game.GetMap().." | Players: ("..table.Count(player.GetAll()).."/"..game.MaxPlayers()..")")
+			ply:PrintMessage( HUD_PRINTCONSOLE, "---------------------------------------------------------------------")
+			ply:PrintMessage( HUD_PRINTCONSOLE, "ID"..string.rep(" ",4-string.len("ID")).."Name"..string.rep(" ",32-string.len("Name")).."Rank"..string.rep(" ",15-string.len("Rank")).."SteamID")
+			for _, pl in ipairs( player.GetAll() ) do
+				ply:PrintMessage( HUD_PRINTCONSOLE, pl:EntIndex()..string.rep(" ",4-string.len(tostring(pl:EntIndex())))..pl:Nick()..string.rep(" ",32-string.len(pl:Nick()))..evolve.ranks[pl:EV_GetRank()].Title..string.rep(" ",15-string.len(evolve.ranks[pl:EV_GetRank()].Title))..pl:SteamID())
+			end
+		else
+			print( "---------------------------------------------------------------------")
+			print( GetHostName().." | "..gmod.GetGamemode().Name.." | Map: "..game.GetMap().." | Players: ("..table.Count(player.GetAll()).."/"..game.MaxPlayers()..")")
+			print( "---------------------------------------------------------------------")
+			print( "ID"..string.rep(" ",4-string.len("ID")).."Name"..string.rep(" ",32-string.len("Name")).."Rank"..string.rep(" ",15-string.len("Rank")).."SteamID")
+			for _, pl in ipairs( player.GetAll() ) do
+				print( pl:EntIndex()..string.rep(" ",4-string.len(tostring(pl:EntIndex())))..pl:Nick()..string.rep(" ",32-string.len(pl:Nick()))..evolve.ranks[pl:EV_GetRank()].Title..string.rep(" ",15-string.len(evolve.ranks[pl:EV_GetRank()].Title))..pl:SteamID())
+			end
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	return self.Title, evolve.category.administration
+end
+
+evolve:RegisterPlugin( PLUGIN )

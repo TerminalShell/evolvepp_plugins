@@ -1,0 +1,29 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Overwrite the SpecialPerson function
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Special Person"
+PLUGIN.Description = "Overwrite the SpecialPerson function for the scoreboard."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Gamemodes = { "zombiesurvival" }
+
+function PLUGIN:IsSpecialPerson(pl, image)
+	local img, tooltip
+
+	img = evolve.ranks[pl:EV_GetRank()].Icon
+	tooltip = evolve.ranks[pl:EV_GetRank()].Title
+
+	if img then
+		if CLIENT then
+			image:SetImage("icon16/"..img..".png")
+			image:SetTooltip(tooltip)
+		end
+
+		return true
+	end
+
+	return false
+end
+
+evolve:RegisterPlugin( PLUGIN )

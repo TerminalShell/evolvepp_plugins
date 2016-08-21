@@ -1,0 +1,370 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Shop stuff
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Shop"
+PLUGIN.Description = "A basic \"shop\" that allows you to set hats and trails"
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"shop"}
+PLUGIN.Usage = "<type> [name]"
+PLUGIN.Privileges = { "Shop" }
+
+// Hat selection
+PLUGIN.Hats={}
+
+// Trail selection
+PLUGIN.Trails={}
+
+// Create shop settings table
+if !evolve.shop then evolve.shop={} end
+
+function PLUGIN:Call( ply, args )
+	if ( ply:IsValid() ) then
+		local subject = args[1] and string.lower(args[1])
+		local param = args[2] and string.lower(args[2])
+		
+		if evolve.shop[ply:SteamID()] == nil then
+			evolve.shop[ply:SteamID()] = {}
+		end
+		
+		local user = {}
+		if ( subject == "hat" ) then
+			if (  self.Hats[param] ) then
+				evolve.shop[ply:SteamID()].Hat = param
+				self:SetHat(ply,param)
+				user[ply:SteamID()]=evolve.shop[ply:SteamID()]
+				self:SaveShop(user)
+			elseif ( !param or param == "" ) then
+				evolve.shop[ply:SteamID()].Hat = nil
+				self:SetTrail(ply,nil)
+				evolve:Notify( ply, evolve.colors.white, "Shop ", evolve.colors.red, subject, evolve.colors.white, " removed." )
+				user[ply:SteamID()]=evolve.shop[ply:SteamID()]
+				self:SaveShop(user)
+				return
+			else
+				evolve:Notify( ply, evolve.colors.white, "Shop ", evolve.colors.red, subject, evolve.colors.white, " invalid." )
+				return
+			end
+		elseif ( subject == "trail" ) then
+			if ( self.Trails[param] ) then
+				evolve.shop[ply:SteamID()].Trail = param
+				self:SetTrail(ply,param)
+				user[ply:SteamID()]=evolve.shop[ply:SteamID()]
+				self:SaveShop(user)
+			elseif ( !param or param == "" ) then
+				evolve.shop[ply:SteamID()].Trail = nil
+				self:SetTrail(ply,nil)
+				evolve:Notify( ply, evolve.colors.white, "Shop ", evolve.colors.red, subject, evolve.colors.white, " removed." )
+				user[ply:SteamID()]=evolve.shop[ply:SteamID()]
+				self:SaveShop(user)
+				return
+			else
+				evolve:Notify( ply, evolve.colors.white, "Shop ", evolve.colors.red, subject, evolve.colors.white, " invalid." )
+				return
+			end
+		else
+			return
+		end
+		evolve:Notify( ply, evolve.colors.white, "Shop ", evolve.colors.red, subject, evolve.colors.white, " set to ", evolve.colors.red, param, evolve.colors.white, "." )
+		user[ply:SteamID()]=evolve.shop[ply:SteamID()]
+		self:SaveShop(user)
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+if SERVER then
+	util.AddNetworkString( "EV_ShopPerks" )
+	util.AddNetworkString( "EV_Shoppers" )
+	
+	local hdir = 'entities/'
+	local hlist = string.Explode("\n",file.Read(hdir..'hat.txt','LUA'))
+	for k, v in pairs( hlist ) do
+		if v=="" then continue end
+		local h=string.Explode(",",v)
+		PLUGIN.Hats[h[1]]={}
+		PLUGIN.Hats[h[1]].Name=h[2]
+		PLUGIN.Hats[h[1]].Model=h[3]
+		if #h>=4 then PLUGIN.Hats[h[1]].Size=tonumber(h[4]) end
+		if #h>=5 then PLUGIN.Hats[h[1]].Up=tonumber(h[5]) end
+	end
+	
+	local tdir = 'materials/trails/'
+	local tlist = string.Explode("\n",file.Read(tdir..'trail.txt','GAME'))
+	for k, v in pairs( tlist ) do
+		if v=="" then continue end
+		local t=string.Explode(",",v)
+		resource.AddFile( tdir..t[1]..".vmt" )
+		resource.AddFile( tdir..t[1]..".vtf" )
+		PLUGIN.Trails[t[1]]={}
+		PLUGIN.Trails[t[1]].Name=t[2]
+	end
+
+	function PLUGIN:SaveShop( json )
+		evolve:SaveData("shop",evolve.shop)
+	end
+	
+	function PLUGIN:LoadShop()
+		evolve.shop = evolve:LoadData("shop")
+		
+		net.Start( "EV_Shoppers" )
+			net.WriteTable( evolve.shop )
+		net.Broadcast()
+	end
+	
+	function PLUGIN:SetHat( ply, hat )
+		if ( ply.Hat != nil and ply.Hat:IsValid() ) then ply.Hat:Remove() end
+		if ( ply:Team() == TEAM_SPECTATOR ) then return end
+		if ( GAMEMODE_NAME == "zombiesurvival" and ply:Team() != TEAM_HUMAN ) then return end
+		if ( GAMEMODE_NAME == "terrortown" ) then return end
+		if ( GAMEMODE_NAME == "morbusgame" ) then return end
+		if ( hat and hat != '' ) then
+			local ent = ents.Create("hat_".. hat )
+			if ent:IsValid() then
+				ent:Spawn()
+				ent:SetPlayer(ply)
+				//local clr=string.Explode(" ",ply:GetInfo("cl_playercolor"))
+				//ent:SetColor(Color(clr[1]*255,clr[2]*255,clr[3]*255,255))
+				ply.Hat = ent
+			end
+		end
+	end
+	
+	function PLUGIN:SetTrail( ply, trail )
+		if ( ply.Trail != nil and ply.Trail:IsValid() ) then ply.Trail:Remove() end
+		if ( ply:Team() == TEAM_SPECTATOR ) then return end
+		if ( GAMEMODE_NAME == "zombiesurvival" and ply:Team() != TEAM_HUMAN ) then return end
+		if ( GAMEMODE_NAME == "terrortown" ) then return end
+		if ( trail and trail != '' ) then
+			local startw = 10
+			local endw = 1
+			local dur = 0.75
+			local res = 1/(startw+endw)*0.5
+			ply.Trail = util.SpriteTrail( ply, 0, Color(255,255,255,255), false, startw, endw, dur, res, "trails/"..trail..".vmt" )
+		end
+	end
+	
+	function PLUGIN:Initialize()
+		evolve.file[string.lower(self.Title)] = string.lower(self.Title)
+		self:LoadShop()
+	end
+	
+	function PLUGIN:PlayerInitialSpawn( ply )
+		timer.Simple( 3, function()
+			net.Start( "EV_ShopPerks" )
+				net.WriteTable( evolve.plugins['Shop'].Hats )
+				net.WriteTable( evolve.plugins['Shop'].Trails )
+			net.Send( ply )
+			
+			net.Start( "EV_Shoppers" )
+				net.WriteTable( evolve.shop )
+			net.Send( ply )
+		end)
+	end
+	
+	function PLUGIN:PlayerSpawn( ply )
+    if ( ply and ply:IsValid() and evolve.shop[ply:SteamID()] != nil) then
+      self:SetHat(ply,evolve.shop[ply:SteamID()].Hat)
+      self:SetTrail(ply,evolve.shop[ply:SteamID()].Trail)
+    end
+	end
+	
+	function PLUGIN:PlayerDeath( victim, weapon, killer )
+		self:SetHat(victim,nil)
+		self:SetTrail(victim,nil)
+	end
+	
+	function PLUGIN:ShowSpare2( pl )
+		pl:SendLua("evolve.plugins['Shop']:Show( true )")
+	end
+else
+	net.Receive("EV_ShopPerks", function( len, ply )
+		evolve.plugins['Shop'].Hats = net.ReadTable()
+		evolve.plugins['Shop'].Trails = net.ReadTable()
+	end )
+	
+	net.Receive("EV_Shoppers", function( len, ply )
+		evolve.shop = net.ReadTable()
+	end )
+	
+	PLUGIN.Panel = nil
+	PLUGIN.Tabs = nil
+
+	function PLUGIN:Show( enabled )
+		if ( !self.Panel ) then 
+    	if evolve.shop[LocalPlayer():SteamID()] == nil then
+        evolve.shop[LocalPlayer():SteamID()] = {}
+      end
+			self.Panel = vgui.Create( "DFrame" )
+			self.Panel:SetTitle( "Evolve++ Shop" )
+			self.Panel:SetSize( 400, 300 )
+			self.Panel:Center()
+			self.Panel:SetVisible( false )
+			self.Panel:SetDraggable( false )
+			self.Panel:ShowCloseButton( true )
+			self.Panel:SetDeleteOnClose( false )
+			
+			local top = 20
+			local mar = 5
+			self.Tabs = vgui.Create( "DPropertySheet", self.Panel )
+			self.Tabs:SetPos( mar, top + mar )
+			self.Tabs:SetSize( self.Panel:GetWide() - mar * 2, self.Panel:GetTall() - top - mar * 2 )
+			
+			-- Hats
+			self.MyHat = nil
+			if enabled then self.MyHat = evolve.shop[LocalPlayer():SteamID()].Hat end
+			local hats = vgui.Create( "DPanel" )
+			hats:SetPos(0,0)
+			hats:SetSize( self.Tabs:GetWide(), self.Tabs:GetTall() - top )
+			local hatp = vgui.Create( "DModelPanel" )
+			hatp:SetParent( hats )
+			hatp:SetPos( hats:GetWide()/2-30, mar )
+			hatp:SetModel( "" )
+			//local clr=string.Explode(" ",GetConVarString("cl_playercolor"))
+			//hatp:SetColor(Color(clr[1]*255,clr[2]*255,clr[3]*255,255))
+			hatp:SetLookAt( Vector( 0, 0, 0 ) )
+			hatp:SetFOV( 20 )
+			hatp:SetSize( 192, 192 )
+			hatp:SetVisible( false )
+			local equipb = vgui.Create( "DButton")
+			equipb:SetParent( hats )
+			equipb:SetPos( hats:GetWide()/2-30, hats:GetTall() - top * 2 - mar - 4 )
+			equipb:SetText( "Equip" )
+			equipb:SetSize( 100, 28 )
+			equipb:SetVisible( enabled )
+			equipb.DoClick = function( button )
+				surface.PlaySound( "ui/buttonclickrelease.wav" )
+				RunConsoleCommand( evolve.prefix, self.Commands[1], 'hat', equipb.HatID )
+				self.MyHat = equipb.HatID
+			end
+			local removeb = vgui.Create( "DButton")
+			removeb:SetParent( hats )
+			removeb:SetPos( hats:GetWide()/2+70, hats:GetTall() - top * 2 - mar - 4 )
+			removeb:SetText( "Remove" )
+			removeb:SetSize( 100, 28 )
+			removeb:SetVisible( enabled )
+			removeb.DoClick = function( button )
+				surface.PlaySound( "ui/buttonclickrelease.wav" )
+				RunConsoleCommand( evolve.prefix, self.Commands[1], 'hat', "" )
+				self.MyHat = nil
+			end
+			local hatsl = vgui.Create( "DListView" )
+			hatsl:SetParent( hats )
+			hatsl:SetPos( mar, mar )
+			hatsl:SetSize( 150, hats:GetTall() - top - mar )
+			hatsl:SetMultiSelect( false )
+			hatsl:AddColumn( "Hats" )
+			for index,h in pairs( self.Hats ) do
+				local line = hatsl:AddLine( h.Name )
+				if ( self.MyHat == index ) then
+					line:SetSelected( true )
+					equipb.HatID = index
+					hatp:SetModel( h.Model )
+					//local clr=string.Explode(" ",GetConVarString("cl_playercolor"))
+					//hatp:SetColor(Color(clr[1]*255,clr[2]*255,clr[3]*255,255))
+					hatp:SetFOV( h.Size or 20 )
+					hatp:SetLookAt( Vector( 0, 0, h.Up or 0 ) )
+					hatp:SetVisible( true )
+					equipb:SetText( 'Equipped' )
+					equipb:SetVisible( enabled )
+				end
+				line.Index = index
+			end
+			hatsl:SortByColumn(1)
+			local oldClick = hatsl.OnClickLine
+			hatsl.OnClickLine = function( parent, selected, isselected )
+				oldClick( parent, selected, isselected )
+				if ( not isselected ) then return end
+				hatp:SetModel( self.Hats[selected.Index].Model )
+				hatp:SetFOV( self.Hats[selected.Index].Size or 20 )
+				hatp:SetLookAt( Vector( 0, 0, self.Hats[selected.Index].Up or 0 ) )
+				hatp:SetVisible( true )
+				if ( self.MyHat == selected.Index ) then
+					equipb:SetText( 'Equipped' )
+				else
+					equipb:SetText( 'Equip' )
+				end
+				equipb:SetVisible( enabled )
+				equipb.HatID = selected.Index
+			end
+			self.Tabs:AddSheet( "Hats", hats, "icon16/monkey.png", false, false, "Select your hat" )
+			
+			-- Trails
+			self.MyTrail = nil
+			if enabled then self.MyTrail = evolve.shop[LocalPlayer():SteamID()].Trail end
+			local trails = vgui.Create( "DPanel" )
+			trails:SetPos(0,0)
+			trails:SetSize( self.Tabs:GetWide(), self.Tabs:GetTall() - top )
+			local trailp = vgui.Create( "DImage" )
+			trailp:SetParent( trails )
+			trailp:SetPos( trails:GetWide()/2-30, mar )
+			trailp:SetImage( "icon16/plugin.png" )
+			trailp:SetSize( 192, 192 )
+			trailp:SetVisible( false )
+			local equipb = vgui.Create( "DButton")
+			equipb:SetParent( trails )
+			equipb:SetPos( trails:GetWide()/2-30, trails:GetTall() - top * 2 - mar - 4 )
+			equipb:SetText( "Equip" )
+			equipb:SetSize( 100, 28 )
+			equipb:SetVisible( false )
+			equipb.DoClick = function( button )
+				surface.PlaySound( "ui/buttonclickrelease.wav" )
+				RunConsoleCommand( evolve.prefix, self.Commands[1], 'trail', equipb.TrailID )
+				self.MyTrail = equipb.TrailID
+			end
+			local removeb = vgui.Create( "DButton")
+			removeb:SetParent( trails )
+			removeb:SetPos( trails:GetWide()/2+70, trails:GetTall() - top * 2 - mar - 4 )
+			removeb:SetText( "Remove" )
+			removeb:SetSize( 100, 28 )
+			removeb:SetVisible( enabled )
+			removeb.DoClick = function( button )
+				surface.PlaySound( "ui/buttonclickrelease.wav" )
+				RunConsoleCommand( evolve.prefix, self.Commands[1], 'trail', "" )
+				self.MyTrail = nil
+			end
+			local trailsl = vgui.Create( "DListView" )
+			trailsl:SetParent( trails )
+			trailsl:SetPos( mar, mar )
+			trailsl:SetSize( 150, trails:GetTall() - top - mar )
+			trailsl:SetMultiSelect( false )
+			trailsl:AddColumn( "Trails" )
+			for index,t in pairs( self.Trails ) do
+				local line = trailsl:AddLine( t.Name )
+				if ( self.MyTrail == index ) then
+					line:SetSelected( true )
+					equipb.TrailID = index
+					trailp:SetImage( "trails/"..index )
+					trailp:SetVisible( true )
+					equipb:SetText( 'Equipped' )
+					equipb:SetVisible( true )
+				end
+				line.Index = index
+			end
+			trailsl:SortByColumn(1)
+			local oldClick = trailsl.OnClickLine
+			trailsl.OnClickLine = function( parent, selected, isselected )
+				oldClick( parent, selected, isselected )
+				if ( not isselected ) then return end
+				trailp:SetImage( "trails/"..selected.Index )
+				trailp:SetVisible( true )
+				if ( self.MyTrail == selected.Index ) then
+					equipb:SetText( 'Equipped' )
+				else
+					equipb:SetText( 'Equip' )
+				end
+				equipb:SetVisible( enabled )
+				equipb.TrailID = selected.Index
+			end
+			self.Tabs:AddSheet( "Trails", trails, "icon16/rainbow.png", false, false, "Select your trail" )
+			
+			self.Panel:MakePopup()
+		end
+		self.Panel:SetVisible( true )
+		self.Panel:SetMouseInputEnabled( true )
+		self.Panel:SetKeyboardInputEnabled( false )
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

@@ -1,0 +1,36 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Set jump power for a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Jump"
+PLUGIN.Description = "Set jump power for a player."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"jump"}
+PLUGIN.Usage = "[player] [power]"
+PLUGIN.Privileges = { "Jump" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local players = evolve:FindPlayer( args, ply, true )
+		local jump = math.abs( tonumber( args[ #args ] ) or 200 )
+		
+		for _, pl in ipairs( players ) do
+			pl:SetJumpPower(jump)
+		end
+		
+		if ( #players > 0 ) then
+			evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has set the jump power of ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, " to " .. jump .. "." )
+		else
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayers )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	return self.Title, evolve.category.actions, { { "Default", 200 }, { "Double", 500 } }
+end
+
+evolve:RegisterPlugin( PLUGIN )

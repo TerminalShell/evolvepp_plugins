@@ -1,0 +1,21 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Suicide
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Suicide"
+PLUGIN.Description = "Suicide yourself."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"suicide","kill"}
+PLUGIN.Privileges = { "Suicide" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		ply:Kill()
+		evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has suicided.")
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

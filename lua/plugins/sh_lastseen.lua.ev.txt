@@ -1,0 +1,48 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Retrieve last seen time
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Last Seen"
+PLUGIN.Description = "View the last time someone was on the server."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"lastseen"}
+PLUGIN.Usage = "[player]"
+
+function PLUGIN:Call( ply, args )
+	local uid, pl
+	if ( evolve:IsSteamID(args[1] or "") ) then
+		uid = evolve:SteamIDByProperty( "SteamID", args[1] )
+		pl = evolve:GetBySteamID( uid )
+	else
+		pl = evolve:FindPlayer( args[1], ply )
+		
+		if ( #pl > 1 ) then
+			evolve:Notify( ply, evolve.colors.white, "Did you mean ", evolve.colors.red, evolve:CreatePlayerList( pl, true ), evolve.colors.white, "?" )
+			return
+		elseif ( #pl == 0 ) then
+			uid = evolve:SteamIDByProperty( "Nick", args[1] )
+			if ( uid != nil ) then
+				pl = evolve:GetBySteamID( uid )
+			else
+				evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayersnoimmunity )
+				return
+			end
+		elseif ( !pl[1]:IsValid() ) then
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+			return
+		else
+			pl = pl[1]
+			uid = pl:SteamID()
+		end
+	end
+	
+	if ( pl and pl:IsValid() ) then
+		evolve:Notify( ply, evolve.colors.blue, evolve:GetProperty( uid, "Nick" ), evolve.colors.white, " is online right now, and has been on for ", evolve.colors.red, evolve:FormatTime( pl:TimeConnected() ) )
+	else
+		local time = evolve:Time() - tonumber(evolve:GetProperty( uid, "Seen" ))
+		evolve:Notify( ply, evolve.colors.blue, evolve:GetProperty( uid, "Nick" ), evolve.colors.white, " was last online ", evolve.colors.red, evolve:FormatTime( time ), evolve.colors.white, " ago." )
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

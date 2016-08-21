@@ -1,0 +1,40 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Kill a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Slay"
+PLUGIN.Description = "Kill a player."
+PLUGIN.Author = "Overv"
+PLUGIN.Commands = {"slay"}
+PLUGIN.Usage = "[player]"
+PLUGIN.Privileges = { "Slay" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local players = evolve:FindPlayer( args, ply )
+		
+		for _, pl in ipairs( players ) do
+			pl:Kill()
+			pl:SetFrags( pl:Frags() + 1 )
+		end
+		
+		if ( #players > 0 ) then
+			evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has slayed ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, "." )
+		else
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayers )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	if ( arg ) then
+		RunConsoleCommand( evolve.prefix, self.Commands[1], unpack( players ) )
+	else
+		return self.Title, evolve.category.punishment
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

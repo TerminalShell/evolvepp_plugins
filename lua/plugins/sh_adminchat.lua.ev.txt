@@ -1,0 +1,52 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Display a message to online admins
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Admin Chat"
+PLUGIN.Description = "Display a message to all online admins."
+PLUGIN.Author = "Overv, Mwr247"
+PLUGIN.Commands = {"a"}
+PLUGIN.Usage = "<message>"
+PLUGIN.Privileges = { "Admin chat" }
+
+PLUGIN.Prefix= "[Admin Chat]"
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		if ( #args == 0 ) then return end
+		local msg = table.concat( args, " " )
+		local silent=evolve.SilentNotify
+		evolve.SilentNotify=false
+		for _, pl in pairs( player.GetAll() ) do
+			if ( pl:EV_HasPrivilege( self.Privileges[1] ) ) then evolve:Notify( pl, evolve.colors.red, self.Prefix .. " ", team.GetColor( ply:Team() ), ply:Nick(), evolve.colors.white, ": " .. msg ) end
+		end
+		evolve.SilentNotify=silent
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:PlayerSay( ply, msg )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		if (table.HasValue( evolve.chatPrefix, string.Left( msg, 1 ) ) or table.HasValue( evolve.chatPrefixSilent, string.Left( msg, 1 ) )) and (table.HasValue( evolve.chatPrefix, string.sub( msg, 2, 2 ) ) or table.HasValue( evolve.chatPrefixSilent, string.sub( msg, 2, 2 ) )) then
+			if #msg==2 then
+				if !ply.AdminChat then 
+					ply.AdminChat = true
+					evolve:Notify( ply, evolve.colors.red, self.Prefix, evolve.colors.white, " enabled." )
+				else
+					ply.AdminChat = false
+					evolve:Notify( ply, evolve.colors.red, self.Prefix, evolve.colors.white, " disabled." )
+				end
+			else
+				self:Call( ply, {string.sub( msg, 3 )} )	
+			end
+			return ""
+		elseif ply.AdminChat and !(table.HasValue( evolve.chatPrefix, string.Left( msg, 1 ) ) or table.HasValue( evolve.chatPrefixSilent, string.Left( msg, 1 ) )) then
+			self:Call( ply, {msg} )
+			return ""
+		end
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

@@ -1,0 +1,50 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Manage player sprays
+-------------------------------------------------------------------------------------------------------------------------*/
+
+PLUGIN = {}
+PLUGIN.Title = "Sprays"
+PLUGIN.Description = "Shows who sprayed."
+PLUGIN.Author = "Whocares., Mwr247"
+PLUGIN.Privileges = { "Immediate spraying", "Can Spray", "See Spray Names" }
+
+if CLIENT then
+    function PLUGIN:HUDPaint()
+		if LocalPlayer():EV_HasPrivilege( self.Privileges[3] ) then
+			local Trace = LocalPlayer():GetEyeTrace()
+			local LookAt = Trace.HitPos
+			for _, pl in pairs(player.GetAll()) do
+				local SPos = pl:GetNWVector( "SprayPos" )
+				local RPos = SPos - Vector(0, 0, 50)
+				if SPos != Vector(0, 0, 0) and LookAt:Distance( SPos ) < 32 and Trace.HitWorld and LocalPlayer():GetPos():Distance( SPos ) < 512 then
+					local Text = pl:Nick() .. "'s Spray"
+					surface.SetFont( "Default" )
+					local w, h = surface.GetTextSize( Text )
+					w = w + 5
+					h = h + 5
+					draw.WordBox( 8, ScrW() / 2 - w / 2, ScrH() / 2 - h / 2, Text, "Default", Color( 0, 0, 0, 128 ), team.GetColor( pl:Team() ) )
+				end
+			end
+		end
+    end
+end
+
+if SERVER then
+    function PLUGIN:PlayerSpray( ply )
+		if ply:EV_HasPrivilege( self.Privileges[1] ) then
+			ply:AllowImmediateDecalPainting()
+		end
+		if ( !ply:EV_HasPrivilege( self.Privileges[2] ) ) then
+			return true
+		end
+        local pos = ply:GetEyeTrace().HitPos
+        ply:SetNWVector( "SprayPos", pos )
+        return false
+    end
+ 
+    function PLUGIN:PlayerSpawn( ply )
+        ply:SetNWVector( "SprayPos", Vector( 0, 0, 0 ) )
+    end
+end
+
+evolve:RegisterPlugin( PLUGIN )

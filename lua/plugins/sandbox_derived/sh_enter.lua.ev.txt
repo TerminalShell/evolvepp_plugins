@@ -1,0 +1,46 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Make a player enter a vehicle
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Enter Vehicle"
+PLUGIN.Description = "Make a player enter a vehicle."
+PLUGIN.Author = "Overv"
+PLUGIN.Commands = {"enter"}
+PLUGIN.Usage = "[player]"
+PLUGIN.Privileges = { "Enter vehicle" }
+PLUGIN.Gamemodes = { "sandbox_derived" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local players = evolve:FindPlayer( args, ply )
+		local vehicle = ply:GetEyeTrace().Entity
+		
+		if ( !IsEntity( vehicle ) or !vehicle:IsVehicle() ) then
+			evolve:Notify( ply, evolve.colors.red, "You are not looking at a vehicle!" )
+		else
+			if ( #players == 1 ) then
+				if ( vehicle:GetDriver():IsPlayer() ) then vehicle:GetDriver():ExitVehicle() end
+				players[1]:EnterVehicle( vehicle )
+				
+				evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has forced ", evolve.colors.red, players[1]:Nick(), evolve.colors.white, " into a vehicle." )
+			elseif ( #players > 1 ) then
+				evolve:Notify( ply, evolve.colors.white, "Did you mean ", evolve.colors.red, evolve:CreatePlayerList( players, true ), evolve.colors.white, "?" )
+			else
+				evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayers )
+			end
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	if ( arg ) then
+		RunConsoleCommand( evolve.prefix, self.Commands[1], unpack( players ) )
+	else
+		return self.Title, evolve.category.actions
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

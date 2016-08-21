@@ -1,0 +1,217 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Provides autocomplete for chat commands
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Chat Autocomplete"
+PLUGIN.Description = "Provides autocomplete for chat commands"
+PLUGIN.Author = "Overv, Mwr247"
+
+PLUGIN.Suggestions = {}
+PLUGIN.Offset=0
+PLUGIN.Change=""
+PLUGIN.KeyDown=false
+
+function PLUGIN:HUDPaint()
+	if ( self.Chat ) then
+		local x, y = chat.GetChatBoxPos()
+		x = x + ScrW() * 0.03875
+		y = y + ScrH() / 4 + 5
+		
+		surface.SetFont( "ChatFont" )
+		
+		if ( #self.Suggestions == 1 and self.Suggestions[1].Commands == "" ) then
+			draw.SimpleText( self.Suggestions[1].Description, "ChatFont", x, y, evolve.colors.black )
+			draw.SimpleText( self.Suggestions[1].Description, "ChatFont", x, y, evolve.colors.red )
+		else
+			if input.IsKeyDown( KEY_UP ) then
+				if !self.KeyDown then
+					self.Offset=(self.Offset-1)%(#self.Suggestions)
+					self.KeyDown=true
+				end
+			elseif input.IsKeyDown( KEY_DOWN ) then
+				if !self.KeyDown then
+					self.Offset=(self.Offset+1)%(#self.Suggestions)
+					self.KeyDown=true
+				end
+			elseif self.KeyDown then
+				self.KeyDown=false
+			end
+			local sx, sy, ux, uy
+			for i=1,#self.Suggestions do
+				if i==4 then break end
+				local j=((i+self.Offset)-1)%(#self.Suggestions)+1
+				sx, sy = surface.GetTextSize( self.Suggestions[j].Commands )
+				draw.SimpleText( self.Suggestions[j].Commands, "ChatFont", x, y, evolve.colors.black )
+				draw.SimpleText( self.Suggestions[j].Commands, "ChatFont", x, y, evolve.colors.yellow )
+				draw.SimpleText( " " .. self.Suggestions[j].Usage or "", "ChatFont", x + sx, y, evolve.colors.black )
+				draw.SimpleText( " " .. self.Suggestions[j].Usage or "", "ChatFont", x + sx, y, evolve.colors.white )
+				y = y + sy
+			end
+			if ( #self.Suggestions == 1 and self.Suggestions[1].Description != "" ) then
+				ux, uy = surface.GetTextSize( " " .. self.Suggestions[1].Usage or "" )
+				
+				draw.SimpleText( " - " .. self.Suggestions[1].Description or "", "ChatFont", x + sx + ux, y - sy, evolve.colors.black )
+				draw.SimpleText( " - " .. self.Suggestions[1].Description, "ChatFont", x + sx + ux, y - sy, evolve.colors.yellow )
+			end
+		end
+	end
+end
+
+function PLUGIN:ChatTextChanged( str )
+	if ( table.HasValue( evolve.chatPrefix, string.Left( str, 1 ) ) or table.HasValue( evolve.chatPrefixSilent, string.Left( str, 1 ) ) ) then
+		if str!=self.Change then
+			self.Offset=0
+			self.Change=str
+		end
+		local spl = string.Explode(" ", str)
+		local com = string.sub( spl[1], 2 )
+		local full = false
+		if ( spl[2] ) then full = true end
+		self.Suggestions = {}
+		
+		for k, v in pairs( evolve.plugins ) do
+			if ( v.Commands and (v.Privileges == nil or LocalPlayer():EV_HasPrivilege(v.Privileges[1])) ) then
+				for _, w in pairs( v.Commands ) do
+					if ( w and ( full and w == string.lower( com ) ) or ( !full and string.sub( w, 1, #com ) == string.lower( com ) /*and #self.Suggestions < 4*/ ) ) then
+						if v.Usage then
+							params=self:Usage(v.Usage)
+							if #params>0 and full then
+								done=""
+								for s, u in pairs( params ) do
+									sugg=self:Suggest( u )
+									local rem=""
+									for i=s+1,#params do
+										rem=rem.." "..params[i]
+									end
+									if #sugg>0 then
+										if s>=#spl then break end
+										for _, t in pairs( sugg ) do
+											if (string.lower(t) == string.lower( spl[s+1] ) or string.sub( string.lower(t), 1, #spl[s+1] ) == string.lower( spl[s+1] ) )  /*and #self.Suggestions < 4*/ then
+												if ( s+1==#spl ) then
+													table.insert( self.Suggestions, { Commands = string.sub( str, 1, 1 ) .. w, Usage = done .. t .. rem or "", Description = v.Description or "" } )
+												elseif s+1<#spl then
+													done=done..t.." "
+												end
+											end
+										end
+									else
+										if #self.Suggestions==0 then
+											table.insert( self.Suggestions, { Commands = string.sub( str, 1, 1 ) .. w, Usage = v.Usage or "", Description = v.Description or "" } )
+										else
+											for _,m in pairs(self.Suggestions) do
+												if m.Commands != string.sub( str, 1, 1 ) .. w then
+													table.insert( self.Suggestions, { Commands = string.sub( str, 1, 1 ) .. w, Usage = v.Usage or "", Description = v.Description or "" } )
+												end
+											end
+										end
+									end
+								end
+							else
+								table.insert( self.Suggestions, { Commands = string.sub( str, 1, 1 ) .. w, Usage = v.Usage or "", Description = v.Description or "" } )
+							end
+						else
+							table.insert( self.Suggestions, { Commands = string.sub( str, 1, 1 ) .. w, Usage = "", Description = v.Description or "" } )
+						end
+					end
+				end
+			end
+		end
+		if ( #self.Suggestions == 0 ) then
+			table.insert( self.Suggestions, { Commands = "", Usage = "", Description = "No matching commands found" } )
+		else
+			if !full then
+				table.SortByMember( self.Suggestions, "Commands", function( a, b ) return a < b end )
+			end
+		end
+	else
+		self.Suggestions = {}
+	end
+end
+
+function PLUGIN:Usage( str )
+	local tab={}
+	local pat="[%[<][%w|/%-_() ]+[%]>]"
+	for word in string.gmatch(str,pat) do
+		if word!=" " then
+			table.insert(tab,string.lower(word))
+		end
+	end
+	return tab
+end
+
+function PLUGIN:Suggest( str )
+	local tab={}
+	str=string.sub(str,2,-2)
+	if string.match(str,"player") then
+		for _,val in pairs(player.GetAll()) do
+			table.insert(tab,string.Explode(" ",val:Nick())[1])
+		end
+		table.sort(tab)
+		table.insert(tab,"*")
+		table.insert(tab,"@")
+		table.insert(tab,"!@")
+		for k,val in pairs(team.GetAllTeams()) do
+			if k > 1 and team.NumPlayers( k ) > 0 then
+				table.insert(tab,"#"..string.lower(string.Replace(team.GetName( k )," ","")))
+				table.insert(tab,"!#"..string.lower(string.Replace(team.GetName( k )," ","")))
+			end
+		end
+	end
+	if string.match(str,"steamid") then
+		for _,val in pairs(player.GetHumans()) do
+			table.insert(tab,val:SteamID())
+		end
+		table.sort(tab)
+	end
+	if string.match(str,"map") then
+		for _,val in pairs(file.Find("maps/*.bsp","GAME")) do
+			table.insert(tab,string.StripExtension(val))
+		end
+		table.sort(tab)
+	end
+	if string.match(str,"plugin") then
+		for _,val in pairs(evolve.plugins) do
+			table.insert(tab,val.Title)
+		end
+		table.sort(tab)
+	end
+	if string.match(str,"command") then
+		for _,val in pairs(evolve.plugins) do
+			if val.Commands then
+				table.insert(tab,val.Commands[1])
+			end
+		end
+		table.sort(tab)
+	end
+	if string.match(str,"weapon") then
+		for _,val in pairs(weapons.GetList()) do
+			if val.ClassName then
+				table.insert(tab,val.ClassName)
+			end
+		end
+		table.sort(tab)
+	end
+	return tab
+end
+
+function PLUGIN:OnChatTab( str )
+	if ( string.match( str, "^[/!@/][^ ]*$" ) and #self.Suggestions > 0 ) then
+		return self.Suggestions[1+self.Offset].Commands .. " "
+	elseif ( string.match( str, "^[/!@/][^ ]* " ) and #self.Suggestions > 0 ) then
+		local num=string.Explode(" ", self.Suggestions[1+self.Offset].Usage)
+		local ret=self.Suggestions[1+self.Offset].Commands
+		for k,v in pairs(num) do
+			if string.match(v,"[%[][%w|/%-_() ]+[%]]") then break end
+			ret=ret.." "
+			if string.match(v,"[<][%w|/%-_() ]+[>]") then break end
+			ret=ret..v
+		end
+		return ret
+	end
+end
+
+function PLUGIN:StartChat() self.Chat = true end
+function PLUGIN:FinishChat() self.Chat = false end
+
+evolve:RegisterPlugin( PLUGIN )

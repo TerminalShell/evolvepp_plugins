@@ -1,0 +1,34 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Reload the map
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Reload Map"
+PLUGIN.Description = "Reload the map."
+PLUGIN.Author = "Overv"
+PLUGIN.Commands = {"reloadmap"}
+PLUGIN.Privileges = { "Map refresh" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has reloaded the map." )
+		
+		local saveRequired = false
+		for _, pl in ipairs( player.GetAll() ) do
+			pl:SetProperty( "LastJoin", evolve:Time() )
+			saveRequired = true
+		end
+		if ( saveRequired ) then evolve:CommitProperties() end
+		
+		RunConsoleCommand( "gamemode", GAMEMODE.FolderName )
+		RunConsoleCommand( "changelevel", tostring(game.GetMap()))
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	return self.Title, evolve.category.administration
+end
+
+evolve:RegisterPlugin( PLUGIN )

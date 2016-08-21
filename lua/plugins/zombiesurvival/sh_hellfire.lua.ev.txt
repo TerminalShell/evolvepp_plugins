@@ -1,0 +1,49 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Activate Hellfire
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Hellfire"
+PLUGIN.Description = "Rain flaming barrels down on the human players."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"hellfire"}
+PLUGIN.Privileges = { "Hellfire" }
+PLUGIN.Active = false
+PLUGIN.Delay = 0.1 // Delay between barrel drops
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		if ( !self.Active ) then
+			evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has activated ", evolve.colors.red, self.Title, evolve.colors.white, "." )
+			timer.Create( self.Title, self.Delay, 0, self.Hellfire )
+		else
+			evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has deactivated ", evolve.colors.red, self.Title, evolve.colors.white, "." )
+			timer.Destroy( self.Title )
+		end
+	self.Active = !self.Active
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+
+if SERVER then
+	function PLUGIN:Hellfire()
+		if ( #team.GetPlayers( TEAM_HUMANS ) < 1 ) then
+			self.Active = false
+			timer.Destroy( self.Title )
+		else
+			local e = ents.Create( "prop_physics" )
+			e:SetModel( "models/props_c17/oildrum001_explosive.mdl" )
+			e:SetPos( team.GetPlayers( TEAM_HUMANS )[math.random( 1, #team.GetPlayers( TEAM_HUMANS ) )]:GetPos() + Vector( 0, 0, 250 ) )
+			e:Spawn()
+			e:Ignite( 10 )
+		end
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	return self.Title, evolve.category.administration
+end
+
+evolve:RegisterPlugin( PLUGIN )

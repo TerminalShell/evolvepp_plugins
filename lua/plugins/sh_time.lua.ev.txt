@@ -1,0 +1,26 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Current time
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Time"
+PLUGIN.Description = "Returns the current time."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"time"}
+
+function PLUGIN:Call( ply, args )
+	net.Start("EV_GetTime")
+	net.Send( ply )
+end
+
+if SERVER then
+	util.AddNetworkString("EV_GetTime")
+else
+	net.Receive("EV_GetTime", function( len )
+		if len then
+			evolve:Notify( evolve.colors.white, "It is now ", evolve.colors.red, evolve:Date("%A, %B %d, %I:%M:%S %p"), evolve.colors.white, "." )
+		end
+	end )
+end
+
+evolve:RegisterPlugin( PLUGIN )

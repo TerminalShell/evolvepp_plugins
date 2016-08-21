@@ -1,0 +1,225 @@
+/*
+Requires that sh_advert.lua be installed.
+Usage of the menu requires both "Advert 3" and "Advert 3 Menu" privileges be set to your rank.
+ReSync button allows for variations from the server's advert list and the client's advert list.
+
+Any problems, let me know! thatcutekiwi@gmail.com . Thanks! Saria Parkar <3
+*/
+
+local TAB = {}
+TAB.Title = "Adverts"
+TAB.Description = "Add, remove, modify adverts."
+TAB.Icon = "icon16/comment.png"
+TAB.Author = "SariaFace" --edited by General Wrex
+TAB.Width = 520
+
+if (SERVER) then
+	util.AddNetworkString( "EV_Adverts_ReceiveList" )
+
+	function SendAdvertsList(target, cmd, args)
+		if (target) then
+			if (evolve:IsPlugin('Advert') and #evolve:GetPlugin('Advert').Adverts) then
+				net.Start( "EV_Adverts_ReceiveList" )
+				net.WriteTable( evolve.plugins['Advert'].Adverts )
+				net.Send(target)
+			end
+		end
+	end
+	concommand.Add("EV_Adverts_RequestList", SendAdvertsList)
+else
+	local NewAdPanelReg = {}
+	function NewAdPanelReg:Init()
+		self:SetPos( 40, (ScrH()/3)*2)
+		self:SetSize(560, 62)
+		self:SetTitle("Add new advert")
+		self:MakePopup()
+		self:SetZPos(999999)
+
+		self.IDLabel = vgui.Create("DLabel", self)
+		self.IDLabel:SetText("ID")
+		self.IDLabel:SetPos(37, 20)
+		self.IDInput = vgui.Create("DTextEntry", self)
+		self.IDInput:SetPos(2, (self:GetTall()-24))
+		self.IDInput:SetSize(70, 20)
+		self.IDInput.OnLoseFocus = function() self.IDInput:SetValue(self.IDInput:GetValue():lower()) end
+
+		self.ColorRLabel = vgui.Create("DLabel", self)
+		self.ColorRLabel:SetText("R")
+		self.ColorRLabel:SetPos(85, 20)
+		self.ColorR = vgui.Create("DTextEntry", self)
+		self.ColorR:SetSize(24, 20)
+		self.ColorR:SetPos(74, (self:GetTall()-24))
+		self.ColorR:SetValue("255")
+		self.ColorR:SetTextColor(Color(255,0,0,255))
+		self.ColorR.OnGetFocus = function() self.ColorR:SelectAll() end
+		self.ColorR.OnLoseFocus = function() if (string.len(self.ColorR:GetValue()) == 0) then self.ColorR:SetValue("0") end end
+		self.ColorR.OnTextChanged = function()
+			if ((string.len(self.ColorR:GetValue()) > 0 and !tonumber(self.ColorR:GetValue())) or string.len(self.ColorR:GetValue()) > 3) then
+				self.ColorR:SetValue("255")
+			end
+		end
+		self.ColorGLabel = vgui.Create("DLabel", self)
+		self.ColorGLabel:SetText("G")
+		self.ColorGLabel:SetPos(109, 20)
+		self.ColorG = vgui.Create("DTextEntry", self)
+		self.ColorG:SetSize(24, 20)
+		self.ColorG:SetPos(100, (self:GetTall()-24))
+		self.ColorG:SetValue("255")
+		self.ColorG:SetTextColor(Color(0,155,0,255))
+		self.ColorG.OnGetFocus = function() self.ColorG:SelectAll() end
+		self.ColorG.OnLoseFocus = function() if (string.len(self.ColorG:GetValue()) == 0) then self.ColorG:SetValue("0") end end
+		self.ColorG.OnTextChanged = function()
+			if ((string.len(self.ColorG:GetValue()) > 0 and !tonumber(self.ColorG:GetValue())) or string.len(self.ColorG:GetValue()) > 3) then
+				self.ColorG:SetValue("255")
+			end
+		end
+		self.ColorBLabel = vgui.Create("DLabel", self)
+		self.ColorBLabel:SetText("B")
+		self.ColorBLabel:SetPos(136, 20)
+		self.ColorB = vgui.Create("DTextEntry", self)
+		self.ColorB:SetSize(24, 20)
+		self.ColorB:SetPos(126, (self:GetTall()-24))
+		self.ColorB:SetValue("255")
+		self.ColorB:SetTextColor(Color(0,0,255,255))
+		self.ColorB.OnGetFocus = function() self.ColorB:SelectAll() end
+		self.ColorB.OnLoseFocus = function() if (string.len(self.ColorB:GetValue()) == 0) then self.ColorB:SetValue("0") end end
+		self.ColorB.OnTextChanged = function()
+			if ((string.len(self.ColorB:GetValue()) > 0 and !tonumber(self.ColorB:GetValue())) or string.len(self.ColorB:GetValue()) > 3) then
+				self.ColorB:SetValue("255")
+			end
+		end
+
+		self.ColorIntLabel = vgui.Create("DLabel", self)
+		self.ColorIntLabel:SetText("Time(s)")
+		self.ColorIntLabel:SetPos(155, 20)
+		self.Interval = vgui.Create("DTextEntry", self)
+		self.Interval:SetPos(152, (self:GetTall()-24))
+		self.Interval:SetSize(40, 20)
+		self.Interval:SetValue("60")
+		self.Interval.OnGetFocus = function() self.Interval:SelectAll() end
+		self.ColorB.OnLoseFocus = function() if (string.len(self.Interval:GetValue()) == 0) then self.Interval:SetValue("60") end end
+		self.Interval.OnTextChanged = function()
+			if (string.len(self.Interval:GetValue()) > 0 and !tonumber(self.Interval:GetValue())) then
+				self.Interval:SetValue("60")
+			end
+		end
+
+		self.ColorMsgLabel = vgui.Create("DLabel", self)
+		self.ColorMsgLabel:SetText("Message")
+		self.ColorMsgLabel:SetPos(310, 20)
+		self.Msg = vgui.Create("DTextEntry", self)
+		self.Msg:SetPos(194, (self:GetTall()-24))
+		self.Msg:SetSize(260, 20)
+
+		self.AddBut = vgui.Create( "DButton", self )
+		self.AddBut:SetSize( 60, 22 )
+		self.AddBut:SetPos( self:GetWide() - 68, (self:GetTall()-26) )
+		self.AddBut:SetText( "Add" )
+		self.AddBut.DoClick = function()
+			if (!tonumber(self.Interval:GetValue())) then
+				evolve:Notify(LocalPlayer(), evolve.colors.red, "Incorrect Time input!")
+				self:Remove()
+				return
+			end
+			local newAd = {}
+			newAd.Color = {["r"] = self.ColorR:GetValue(), ["g"] = self.ColorG:GetValue(), ["b"] = self.ColorB:GetValue(), ["a"] = "255"}
+			newAd.Time =  self.Interval:GetValue()
+			newAd.Msg = self.Msg:GetValue()
+			newAd.OnState = true
+			RunConsoleCommand(evolve.prefix, "advert", "add", self.IDInput:GetValue(), newAd.Color["r"], newAd.Color["g"], newAd.Color["b"], tostring(newAd.Time), newAd.Msg)
+			evolve.plugins['Advert'].Adverts[self.IDInput:GetValue()] = newAd
+			timer.Simple(1.0, function() TAB:Update() end)
+			self:Remove()
+		end
+
+	end
+	vgui.Register("NewAdPanel", NewAdPanelReg, "DFrame")
+	
+	if ( evolve:IsPlugin( 'Advert' ) ) then
+		//evolve.plugins['Advert'].Adverts = {}
+		net.Receive("EV_Adverts_ReceiveList", function( len, ply )
+			evolve.plugins['Advert'].Adverts = net.ReadTable()
+		end)
+
+		RunConsoleCommand("EV_Adverts_RequestList")
+	end
+end
+
+function TAB:Initialize( pnl )
+	self.AdList = vgui.Create( "DListView", pnl )
+	self.AdList:SetSize( self.Width, pnl:GetParent():GetTall() - 58 )
+	self.AdList:SetMultiSelect( false )
+	self.AdList:AddColumn( "ID" ):SetFixedWidth( 64 )
+	self.AdList:AddColumn( "Color" ):SetFixedWidth( 70 )
+	self.AdList:AddColumn( "Time(s)" ):SetFixedWidth( 40 )
+	self.AdList:AddColumn( "Message" ):SetFixedWidth( 308 )
+	self.AdList:AddColumn( "Active" ):SetFixedWidth( 32 )
+
+	self.New = vgui.Create( "EvolveButton", pnl )
+	self.New:SetSize( 60, 22 )
+	self.New:SetPos( self.Width - 275, pnl:GetParent():GetTall() - 58 )
+	self.New:SetButtonText( "ReSync" )
+	self.New:SetNotHighlightedColor( 50 )
+	self.New:SetHighlightedColor( 90 )
+	self.New.DoClick = function()
+		self:Request()
+	end
+
+	self.New = vgui.Create( "EvolveButton", pnl )
+	self.New:SetSize( 60, 22 )
+	self.New:SetPos( self.Width - 210, pnl:GetParent():GetTall() - 58 )
+	self.New:SetButtonText( "New" )
+	self.New:SetNotHighlightedColor( 50 )
+	self.New:SetHighlightedColor( 90 )
+	self.New.DoClick = function()
+		local newAdInput = vgui.Create("NewAdPanel")
+	end
+
+	self.Tog = vgui.Create( "EvolveButton", pnl )
+	self.Tog:SetSize( 60, 22 )
+	self.Tog:SetPos( self.Width - 145, pnl:GetParent():GetTall() - 58 )
+	self.Tog:SetButtonText( "Toggle" )
+	self.Tog:SetNotHighlightedColor( 50 )
+	self.Tog:SetHighlightedColor( 90 )
+	self.Tog.DoClick = function()
+		if id != self.AdList:GetSelected()[1]:GetValue(1) then id = 0 end
+		local id = self.AdList:GetSelected()[1]:GetValue(1)
+		
+		RunConsoleCommand(evolve.prefix, "advert", "toggle", id)
+		evolve.plugins['Advert'].Adverts[id]["OnState"] = !evolve.plugins['Advert'].Adverts[id]["OnState"]
+		self.AdList:GetSelected()[1]:SetValue(5, evolve.plugins['Advert'].Adverts[id]["OnState"])
+	end
+
+	self.Rem = vgui.Create( "EvolveButton", pnl )
+	self.Rem:SetSize( 60, 22 )
+	self.Rem:SetPos( self.Width - 80, pnl:GetParent():GetTall() - 58 )
+	self.Rem:SetButtonText( "Remove" )
+	self.Rem:SetNotHighlightedColor( 50 )
+	self.Rem:SetHighlightedColor( 90 )
+	self.Rem.DoClick = function()
+		local id = self.AdList:GetSelected()[1]:GetValue(1)
+		RunConsoleCommand(evolve.prefix, "advert", "remove", id)
+		evolve.plugins['Advert'].Adverts[id] = nil
+		self:Update()
+	end
+	timer.Simple(1.5, function() TAB:Update() end)
+end
+
+function TAB:Update()
+	self.AdList:Clear()
+	for id,data in pairs(evolve.plugins['Advert'].Adverts) do
+		local line = self.AdList:AddLine( id, data.Color["r"]..","..data.Color["g"]..","..data.Color["b"], data.Time, data.Msg, data.OnState);
+	end
+	self.AdList:SelectFirstItem()
+end
+
+function TAB:Request()
+	RunConsoleCommand("EV_Adverts_RequestList")
+	timer.Simple(2, function() TAB:Update() end)
+end
+
+function TAB:IsAllowed()
+	return evolve:IsPlugin( 'Advert' ) and LocalPlayer():EV_HasPrivilege( 'Advert' )
+end
+
+evolve:RegisterTab( TAB )

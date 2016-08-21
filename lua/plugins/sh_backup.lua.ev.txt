@@ -1,0 +1,136 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Data file backup system
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Backup"
+PLUGIN.Description = "Backup data files"
+PLUGIN.Author = "Mwr247"
+PLUGIN.Usage = "<data name|'all'>"
+PLUGIN.Commands = { "backup" }
+PLUGIN.Privileges = { "Backup Data" }
+
+if SERVER then
+	function PLUGIN:Call( ply, args )
+		if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+			if ( args[1] != nil and string.lower(args[1]) != "all" ) then
+				local title = string.lower(args[1])
+				if ( table.HasValue( evolve.file, title ) ) then
+					self:BackupData( title )
+					evolve:Notify( 1, evolve.colors.blue, ply:Nick() or "Console", evolve.colors.white, " backed up a copy of ", evolve.colors.red, title, evolve.colors.white, "." )
+				else
+					evolve:Notify( ply, evolve.colors.red, "No data file matching the name '"..title.."'." )
+				end
+			else
+				self:BackupDataAll()
+				evolve:Notify( 1, evolve.colors.blue, ply:Nick() or "Console", evolve.colors.white, " backed up all data files." )
+			end
+		else
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+		end
+	end
+
+	function PLUGIN:Initialize()
+		evolve.folder.backups = evolve.folder.data..'backups/'
+		if ( !file.IsDir( evolve.folderMain..evolve.folder.backups, "DATA" ) ) then
+			file.CreateDir( evolve.folderMain..evolve.folder.backups )
+		end
+	end
+	
+	function PLUGIN:ShutDown()
+		self:BackupDataAll()
+	end
+
+	function PLUGIN:BackupData( name )
+		if CLIENT then return end
+		if ( !table.HasValue( evolve.file, name ) ) then return end
+		local data = evolve:LoadData( name )
+		if ( type(data) == "table" ) then
+			if ( table.Count(data) == 0 ) then
+				return
+			end
+		elseif ( type(data) == "string" ) then
+			if ( data == "" ) then
+				return
+			end
+		end
+		evolve:SaveFile( evolve.folder.backups .. evolve:FileDate() .. "." .. name .. evolve.filePackExt, data )
+	end
+
+	function PLUGIN:BackupDataAll()
+		for k, v in pairs( evolve.file ) do
+			if ( evolve:FileDate( file.Time( evolve.folderMain..evolve.folder.data..v..evolve.fileExt, "DATA" ) ) == evolve:FileDate() ) then
+				self:BackupData( v )
+			end
+		end
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )
+
+/*-------------------------------------------------------------------------------------------------------------------------
+	Data file restore system
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Restore"
+PLUGIN.Description = "Restore data files."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Usage = "<data name|'all'> [date]"
+PLUGIN.Commands = { "restore" }
+PLUGIN.Privileges = { "Restore Data" }
+
+if SERVER then
+	function PLUGIN:Call( ply, args )
+		if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+			if ( args[1] != nil and string.lower(args[1]) != "all" ) then
+				local title = string.lower(args[1])
+				local time = evolve:FileDate()
+				if ( args[2] and evolve:IsFileDate( args[2] ) ) then time = args[2] end
+				if ( table.HasValue( evolve.file, title ) ) then
+					local success = self:RestoreData( title, time )
+					if ( success != false ) then
+						evolve[title] = evolve:LoadData( title )
+						evolve:Notify( 1, evolve.colors.blue, ply:Nick() or "Console", evolve.colors.white, " restored a copy of ", evolve.colors.red, title, evolve.colors.white, " from ", evolve.colors.red, time, evolve.colors.white, "." )
+					else
+						evolve:Notify( ply, evolve.colors.white, "No existing backup of '", evolve.colors.red, title, evolve.colors.white, "' on that date." )
+					end
+				else
+					evolve:Notify( ply, evolve.colors.white, "No data file matching the name '", evolve.colors.red, title, evolve.colors.white, "'." )
+				end
+			else
+				local time = evolve:FileDate()
+				if ( args[2] and evolve:IsFileDate( args[2] ) ) then time = args[2] end
+				self:RestoreDataAll( time )
+				evolve:Notify( 1, evolve.colors.blue, ply:Nick() or "Console", evolve.colors.white, " restored all data files from ", evolve.colors.red, time, evolve.colors.white, "." )
+			end
+		else
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+		end
+	end
+
+	function PLUGIN:RestoreData( name, date )
+		if CLIENT then return end
+		local filedate = date or evolve:FileDate()
+		if ( !file.Exists( evolve.folderMain .. evolve.folder.backups .. filedate .. "." .. name .. evolve.filePackExt .. evolve.fileExt, "DATA" ) ) then return false end
+		local pack = false or string.EndsWith( name, evolve.filePackExt )
+		if ( !table.HasValue( evolve.file, name ) ) then return end
+		local data = evolve:LoadFile( evolve.folder.backups .. filedate .. "." .. name .. evolve.filePackExt )
+		if ( !pack ) then
+			evolve:SaveData( name, data )
+		else
+			evolve:SaveData( name .. evolve.filePackExt, data )
+		end
+	end
+	
+	function PLUGIN:RestoreDataAll( time )
+		for k, v in pairs( evolve.file ) do
+			local success = self:RestoreData( v, time )
+			if ( success != false ) then
+				evolve[v] = evolve:LoadData( v )
+			end
+		end
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

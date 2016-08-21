@@ -1,0 +1,73 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Change player names
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Name"
+PLUGIN.Description = "Change a player's name."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"name","nick"}
+PLUGIN.Usage = "<player> <newname>"
+PLUGIN.Privileges = { "Change Name" }
+
+if !isfunction(EV_func_Player.OldNick) then
+	EV_func_Player.OldNick = EV_func_Player.Nick
+	function EV_func_Player:Nick()
+		return self.NewNick or self:OldNick()
+	end
+    EV_func_Player.Name = EV_func_Player.Nick
+    EV_func_Player.GetName = EV_func_Player.Nick
+end
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local uid, pl
+		if ( evolve:IsSteamID(args[1]) ) then
+			uid = evolve:SteamIDByProperty( "SteamID", args[1] )
+			pl = evolve:GetBySteamID( uid )
+		else
+			pl = evolve:FindPlayer( args[1], ply )
+			if ( #pl > 1 ) then
+				evolve:Notify( ply, evolve.colors.white, "Did you mean ", evolve.colors.red, evolve:CreatePlayerList( pl, true ), evolve.colors.white, "?" )
+				return
+			elseif ( #pl == 0 ) then
+				evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayersnoimmunity )
+				return
+			elseif ( !pl[1]:IsValid() ) then
+				evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+				return
+			else
+				pl = pl[1]
+				uid = pl:SteamID()
+			end
+		end
+		
+		if !args[2] then
+			evolve:Notify( ply, evolve.colors.red, "New name was blank or empty." )
+			return
+		end
+		
+		
+		local newname = string.Trim(table.concat(args,' ',2))
+		if #newname==0 then
+			evolve:Notify( ply, evolve.colors.red, "New name was blank or empty." )
+			return
+		end
+
+		for k,v in pairs(player.GetAll()) do
+			if string.lower(newname)==string.lower(v:Nick()) then
+				evolve:Notify( ply, evolve.colors.red, "Name already in use." )
+				return
+			end
+		end
+		
+		evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has changed the name of ", evolve.colors.red, pl:Nick(), evolve.colors.white, " to ", evolve.colors.red, newname, evolve.colors.white, "." )
+		pl.NewNick = newname
+		pl:SetProperty( "Nick", pl.NewNick )
+		BroadcastLua("Entity("..pl:EntIndex()..").NewNick='"..pl.NewNick.."'")
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

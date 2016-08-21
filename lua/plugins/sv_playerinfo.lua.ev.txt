@@ -1,0 +1,118 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Player Info
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Player Info"
+PLUGIN.Description = "When players join, show info about them."
+PLUGIN.Author = "Overv"
+
+function PLUGIN:ShowPlayerInfo( ply )
+	local first = !ply:GetProperty( "Seen" )
+	local seen
+	local lastnick
+	
+	if ( first ) then		
+		ply:SetProperty( "Nick", ply:Nick() )
+		ply:SetProperty( "Seen", tostring(evolve:Time()) )
+		ply:SetProperty( "IP", ply:GetIP() )
+		ply:SetProperty( "Time", 0 )
+		
+		evolve:CommitProperties()
+	else
+		seen = tonumber(ply:GetProperty( "Seen" ))
+		lastnick = ply:GetProperty( "Nick" )
+		
+		ply:SetProperty( "Nick", ply:Nick() )
+		ply:SetProperty( "Seen", tostring(evolve:Time()) )
+		ply:SetProperty( "IP", ply:GetIP() )
+		if ( !ply:GetProperty( "Time" ) or ply:GetProperty( "Time" ) < 0 ) then ply:SetProperty( "Time", 0 ) end
+		
+		evolve:CommitProperties()
+	end
+	
+	local message = { evolve.colors.blue, ply:Nick(), evolve.colors.white }
+	
+	/*-------------------------------------------------------------------------------------------------------------------------
+		Here for the first time or joined earlier?
+	-------------------------------------------------------------------------------------------------------------------------*/
+
+	if ( first ) then
+		table.Add( message, { " has joined for the first time", evolve.colors.white } )
+	else
+		table.Add( message, { " last joined ", evolve.colors.red, evolve:FormatTime( evolve:Time() - seen ) .. " ago", evolve.colors.white } )
+	end
+	
+	/*-------------------------------------------------------------------------------------------------------------------------
+		Did you pick a new name?
+	-------------------------------------------------------------------------------------------------------------------------*/
+	
+	if ( !first and lastnick and lastnick != ply:Nick() ) then
+		table.insert( message, " as " .. lastnick )
+	end
+	
+	table.insert( message, "." )
+	
+	evolve:Notify( unpack( message ) )
+end
+
+/*
+function PLUGIN:PlayerInitialSpawn( ply )
+	ply.EV_IntroductionPending = true
+	if ( ply.EV_IntroductionPending ) then
+		self:ShowPlayerInfo( ply )
+		ply.EV_IntroductionPending = false
+		
+		ply.EV_LastPlaytimeSave = evolve:Time()
+	end
+end
+*/
+
+function PLUGIN:PlayerAuthed( ply, stid, unid )
+	ply.EV_IntroductionPending = true
+	if ( ply.EV_IntroductionPending ) then
+		self:ShowPlayerInfo( ply )
+		ply.EV_IntroductionPending = false
+		
+		ply.EV_LastPlaytimeSave = evolve:Time()
+	end
+end
+
+/*function PLUGIN:PlayerSpawn( ply )
+
+end*/
+
+function PLUGIN:PlayerDisconnected( ply )
+	if ply:IsBot() then return end
+	ply:SetProperty( "Seen", tostring(evolve:Time()) )
+	local time = ply:GetProperty( "Time" ) or 0
+	ply:SetProperty( "Time", time + evolve:Time() - ply.EV_LastPlaytimeSave )
+	
+	evolve:CommitProperties()
+end
+
+function PLUGIN:ShutDown()
+	for _, ply in ipairs( player.GetHumans() ) do
+		ply:SetProperty( "Seen", tostring(evolve:Time()) )
+		local time = ply:GetProperty( "Time" ) or 0
+		ply:SetProperty( "Time", time + evolve:Time() - ply.EV_LastPlaytimeSave )
+		
+		ply.EV_LastPlaytimeSave = evolve:Time()
+	end
+	
+	evolve:CommitProperties()
+end
+
+timer.Create( "EV_PlayTimeSave", 60, 0, function()
+	for _, ply in pairs( player.GetHumans() ) do
+		ply:SetProperty( "Seen", tostring(evolve:Time()) )
+		local time = ply:GetProperty( "Time" ) or 0
+		ply:SetProperty( "Time", time + evolve:Time() - ply.EV_LastPlaytimeSave )
+		
+		ply.EV_LastPlaytimeSave = evolve:Time()
+	end
+	
+	evolve:CommitProperties()
+end )
+
+evolve:RegisterPlugin( PLUGIN )

@@ -1,0 +1,46 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Alter player size
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Size"
+PLUGIN.Description = "Scale the size of a player."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"size"}
+PLUGIN.Usage = "[player] [scale]"
+PLUGIN.Privileges = { "Size" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local players = evolve:FindPlayer( args, ply, true )
+		local size = math.abs( tonumber( args[ #args ] ) or 1 )
+		if (size < 0.01) then
+			size = 0.01
+		elseif (size > 100) then
+			size = 100
+		end
+    
+		for _, pl in ipairs( players ) do
+      local speed = math.Clamp(math.abs(pl:GetModelScale()-size),0.1, 5)
+			pl:SetModelScale(size, speed)
+			pl:SetViewOffset(Vector(0,0,size*64))
+			pl:SetViewOffsetDucked(Vector(0,0,size*28))
+			pl:SetHull(Vector(-16,-16,0),Vector(16,16,math.min(72,size*72)))
+			pl:SetHullDuck(Vector(-16,-16,0),Vector(16,16,math.min(36,size*36)))
+		end
+		
+		if ( #players > 0 ) then
+			evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has scaled the size of ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, " to " .. size .. "." )
+		else
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayers )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	return self.Title, evolve.category.actions, { { "Default", 1 }, { "Double", 2 }, { "Half", 0.5 }, { "Tiny", 0.1 } }
+end
+
+evolve:RegisterPlugin( PLUGIN )

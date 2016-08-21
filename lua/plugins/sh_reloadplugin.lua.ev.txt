@@ -1,0 +1,38 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Reload Plugins
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Reload Plugin"
+PLUGIN.Description = "Reload a plugin for Evolve++."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"reloadplugin"}
+PLUGIN.Usage = "<plugin>"
+PLUGIN.Privileges = { "Reload Plugin" }
+PLUGIN.Version = "1.0"
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local found
+		local title = table.concat(args," ") or ""
+		
+		for k, plugin in pairs( evolve.plugins ) do
+			if ( string.lower( plugin.Title ) == string.lower( title ) ) then
+				found = plugin
+				break
+			end
+		end
+		
+		if ( found ) then
+			if SERVER then RunConsoleCommand('EV_PluginFile',found.Title) end
+			evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " reloaded plugin ", evolve.colors.red, found.Title, evolve.colors.white, "." )
+			found = nil
+		else
+			evolve:Notify( ply, evolve.colors.white, "Plugin ", evolve.colors.red, title, evolve.colors.white, " not found." )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

@@ -1,0 +1,108 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Display all chat commands
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Command List"
+PLUGIN.Description = "Display all available chat commands."
+PLUGIN.Author = "Divran"
+PLUGIN.Commands = {"commands"}
+PLUGIN.Usage = "[1/0 (all/yours)]"
+PLUGIN.plugs = {}
+
+function PLUGIN:Initialize()
+	self.plugs = {}
+	for k,v in pairs( evolve.plugins ) do
+		if v.Commands then
+			self.plugs[#self.plugs+1] = table.Copy(v)
+		end
+	end
+
+	table.sort( self.plugs, function( a, b )
+		if not a then return false end
+		if not b then return false end
+
+		local tempa = a.Commands[1]
+		local tempb = b.Commands[1]
+
+		return tempa < tempb
+	end)
+end
+
+function PLUGIN:Call( ply, args )
+	if ( ply:IsValid() ) then
+		local printall = false
+		if (args[1] and args[1] == "1") then printall = true end
+
+		if (printall) then
+			umsg.Start( "EV_CommandStart", ply ) umsg.End()
+		
+			for _, plug in pairs( self.plugs ) do
+				if ( plug.Commands ) then
+					umsg.Start( "EV_CommandList", ply )
+						umsg.String( table.concat( plug.Commands, ", " ) )
+						umsg.String( tostring( plug.Usage ) )
+						umsg.String( plug.Description )
+					umsg.End()
+				end
+			end
+		else
+			umsg.Start( "EV_CommandStart", ply ) umsg.String( ply:EV_GetRank() ) umsg.End()
+			
+			for _, plug in pairs( self.plugs ) do
+				if ( plug.Commands and plug.Privileges ) then
+					for k,v in pairs( plug.Privileges ) do
+						if ( ply:EV_HasPrivilege(v) ) then
+							umsg.Start( "EV_CommandList", ply )
+								umsg.String( table.concat( plug.Commands, ", " ) )
+								umsg.String( plug.Usage or "" )
+								umsg.String( plug.Description )
+							umsg.End()
+							break
+						end
+					end
+				end
+			end
+		end
+		
+		umsg.Start( "EV_CommandEnd", ply ) umsg.End()
+		evolve:Notify( ply, evolve.colors.white, "All chat commands have been printed to your console." )
+	else
+		for _, plugin in pairs( self.plugs ) do
+			if ( plugin.Commands ) then
+				if ( plugin.Usage ) then
+					MsgN( evolve.chatPrefix[1] .. table.concat( plugin.Commands, ", " ) .. " " .. plugin.Usage .. " - " .. plugin.Description )
+				else
+					MsgN( evolve.chatPrefix[1] .. table.concat( plugin.Commands, ", " ) .. " - " .. plugin.Description )
+				end
+			end
+		end
+	end
+end
+
+usermessage.Hook( "EV_CommandStart", function( um )
+	local rank = um:ReadString()
+	if (rank and #rank > 0) then
+		MsgN( "\n============ Available chat commands for the rank " .. rank .. " ============\n" )
+	else
+		MsgN( "\n============ Available chat commands for Evolve ============\n" )
+	end
+end )
+
+usermessage.Hook( "EV_CommandEnd", function( um )
+	MsgN( "" )
+end )
+
+usermessage.Hook( "EV_CommandList", function( um )
+	local com = um:ReadString()
+	local usage = um:ReadString()
+	local desc = um:ReadString()
+	
+	if ( usage and #usage > 0 ) then
+		MsgN( evolve.chatPrefix[1] .. com .. " " .. usage .. " - " .. desc )
+	else
+		MsgN( evolve.chatPrefix[1] .. com .. " - " .. desc )
+	end
+end )
+
+evolve:RegisterPlugin( PLUGIN )

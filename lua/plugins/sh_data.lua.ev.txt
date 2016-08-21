@@ -1,0 +1,44 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Data file load/save system
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Data Files"
+PLUGIN.Description = "Load/save data files."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"data"}
+PLUGIN.Usage = "<load|save> <data name>"
+PLUGIN.Privileges = { "Data Files" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		if ( args[1] != nil and args[2] != nil ) then
+			local title = string.lower(args[2])
+			if ( args[1] == "load" ) then
+				if ( table.HasValue( evolve.file, title ) ) then
+					evolve[title] = evolve:LoadData( title )
+				else
+					evolve:Notify( ply, evolve.colors.red, "Invalid data name." )
+					return
+				end
+				evolve:Notify( 1, evolve.colors.blue, ply:Nick() or "Console", evolve.colors.white, " loaded ", evolve.colors.red, title, evolve.colors.white, " from file." )
+			elseif ( args[1] == "save" ) then
+				if ( table.HasValue( evolve.file, title ) ) then
+					evolve:SaveData( title, evolve[title] )
+				else
+					evolve:Notify( ply, evolve.colors.red, "Invalid data name." )
+					return
+				end
+				evolve:Notify( 1, evolve.colors.blue, ply:Nick() or "Console", evolve.colors.white, " saved ", evolve.colors.red, title, evolve.colors.white, " to file." )
+			else
+				evolve:Notify( ply, evolve.colors.red, "Invalid method, must be \"load\" or \"save\"." )
+			end
+		else
+			evolve:Notify( ply, evolve.colors.red, "Missing method or name, must be \"!"..self.Commands[1].." "..self.Usage.."\"." )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

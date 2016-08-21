@@ -1,0 +1,90 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Gag a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Gag"
+PLUGIN.Description = "Gag a player, prevents using the microphone."
+PLUGIN.Author = "Overv"
+PLUGIN.Commands = {"gag"}
+PLUGIN.Usage = "[player] [1/0]"
+PLUGIN.Privileges = { "Gag" }
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
+		local players = evolve:FindPlayer( args, ply, true )
+		local enabled = ( tonumber( args[ #args ] ) or 1 ) > 0
+		
+		for _, pl in ipairs( players ) do
+			pl:SetNWBool( "Gagged", enabled )
+			
+			if ( enabled ) then
+				pl:SendLua( "LocalPlayer():ConCommand( \"-voicerecord\" )" )
+			end
+		end
+		
+		if ( #players > 0 ) then
+			if ( enabled ) then
+				evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has gagged ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, "." )
+			else
+				evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has ungagged ", evolve.colors.red, evolve:CreatePlayerList( players ), evolve.colors.white, "." )
+			end
+		else
+			evolve:Notify( ply, evolve.colors.red, evolve.constants.noplayers )
+		end
+	else
+		evolve:Notify( ply, evolve.colors.red, evolve.constants.notallowed )
+	end
+end
+
+function PLUGIN:PlayerStartVoice( ply )
+	if ( LocalPlayer():GetNWBool( "Gagged" ) and LocalPlayer() == ply ) then
+		RunConsoleCommand( "-voicerecord" )
+		ply:ChatPrint('You are gagged, no one can hear you.')
+		return false
+	end
+end
+
+function PLUGIN:PlayerCanHearPlayersVoice( listener, talker )
+	if ( talker:GetNWBool( "Gagged" ) ) then
+		return false
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	if ( arg ) then
+		table.insert( players, arg )
+		RunConsoleCommand( evolve.prefix, self.Commands[1], unpack( players ) )
+	else
+		return self.Title, evolve.category.punishment, { { "Enable", 1 }, { "Disable", 0 } }
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )
+
+/*-------------------------------------------------------------------------------------------------------------------------
+	Ungag a player
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Ungag"
+PLUGIN.Description = "Ungag a player."
+PLUGIN.Author = "Mwr247"
+PLUGIN.Commands = {"ungag"}
+PLUGIN.Usage = "[player]"
+
+function PLUGIN:Call( ply, args )
+	if ( ply:EV_HasPrivilege( "Gag" ) ) then
+		local plugin = evolve:GetPlugin( "Gag" )
+		if ( plugin ) then
+			if ( !args ) then args = {} end
+			if ( !args[1] ) then
+				args[1] = "\""..ply:Nick().."\""
+			end
+			args[2] = "0"
+			plugin:Call(ply, args)
+		end
+	end
+end
+
+evolve:RegisterPlugin( PLUGIN )

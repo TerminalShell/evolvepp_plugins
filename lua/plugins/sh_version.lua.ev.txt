@@ -1,0 +1,88 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Evolve version
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Version"
+PLUGIN.Description = "Returns the version of Evolve++ and plugins."
+PLUGIN.Author = "Overv, Northdegree, Mwr247"
+PLUGIN.Commands = { "version" }
+PLUGIN.Disabled = true
+
+-- Set SuppressWarning to true to ignore new update alerts on join
+PLUGIN.SuppressWarning = false
+PLUGIN.VersionURL = "URL_HERE"
+
+function PLUGIN:Call( ply, args )
+	evolve:Notify( ply, evolve.colors.white, "This server is running version ", evolve.colors.red, evolve.version, evolve.colors.white, " of ", evolve.colors.red, evolve.title, evolve.colors.white, "." )
+	self:GetVersion( ply, true )
+end
+
+if SERVER then
+	function PLUGIN:PlayerInitialSpawn( ply )
+		if ( !self.SuppressWarning ) then
+			self:GetVersion( ply )
+		end
+	end
+	
+	function PLUGIN:GetVersion( ply, val )
+		if ( ply:EV_IsAdmin() ) then
+			if ( !self.LatestVersion ) then
+				http.Fetch(self.VersionURL,
+					function(data,length)
+						self.LatestVersion = tostring( data ) --:match( "version = ([1-9]+)" ) )
+					end,
+					function()
+						evolve:Message("Can't get lastest version number!")
+					end
+				)
+			end
+			
+			if ( self.LatestVersion!=nil and self:CompareVersion(evolve.version,self.LatestVersion) == -1 and ply:IsAdmin() ) then
+				evolve:Notify( ply, evolve.colors.red, "Warning: ", evolve.colors.white, "A newer version of ", evolve.colors.red, evolve.title, evolve.colors.white," is available!" )
+				evolve:Notify( ply, evolve.colors.white, "Newest version: ", evolve.colors.red, self.LatestVersion, evolve.colors.white, " - ", evolve.colors.white, "You're using version: ", evolve.colors.red, evolve.version, evolve.colors.white, "!" )
+			elseif ( self.LatestVersion!=nil and val ) then
+				evolve:Notify( ply, evolve.colors.white, "This version is up to date!" )
+			end
+		end
+	end
+
+	function PLUGIN:CompareVersion( cur, new )
+		if ( !new and !cur ) then return 0 elseif ( !new ) then return -1 elseif ( !cur ) then return 1 end
+		cur = string.Explode('.',cur)
+		new = string.Explode('.',new)
+		
+		local ncur = table.Count(cur)
+		local nnew = table.Count(new)
+		
+		if ( ncur != nnew ) then
+			for i=1,ncur do
+				if ( tonumber(cur[ncur+1-i]) == 0 ) then table.remove( cur, ncur+1-i ) else break end
+			end
+			ncur = table.Count(cur)
+			for i=1,nnew do
+				if ( tonumber(new[nnew+1-i]) == 0 ) then table.remove( new, nnew+1-i ) else break end
+			end
+			nnew = table.Count(new)
+		end
+		
+		for i=1,math.max(ncur,nnew) do
+			if ( !cur[i] ) then
+				return 1
+			elseif ( !new[i] ) then
+				return -1
+			elseif ( tonumber(cur[i]) < tonumber(new[i]) ) then
+				return -1
+			elseif ( tonumber(cur[i]) > tonumber(new[i]) ) then
+				return 1
+			end
+		end
+		return 0
+	end
+end
+
+function PLUGIN:Menu( arg, players )
+	return self.Title, evolve.category.administration
+end
+
+evolve:RegisterPlugin( PLUGIN )
