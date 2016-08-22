@@ -7,6 +7,7 @@ PLUGIN.Title = "Player Info"
 PLUGIN.Description = "When players join, show info about them."
 PLUGIN.Author = "Overv"
 
+if CLIENT then return end
 function PLUGIN:ShowPlayerInfo( ply )
 	local first = !ply:GetProperty( "Seen" )
 	local seen
@@ -56,29 +57,17 @@ function PLUGIN:ShowPlayerInfo( ply )
 	evolve:Notify( unpack( message ) )
 end
 
-/*
 function PLUGIN:PlayerInitialSpawn( ply )
-	ply.EV_IntroductionPending = true
-	if ( ply.EV_IntroductionPending ) then
-		self:ShowPlayerInfo( ply )
-		ply.EV_IntroductionPending = false
-		
-		ply.EV_LastPlaytimeSave = evolve:Time()
-	end
-end
-*/
-
-function PLUGIN:PlayerAuthed( ply, stid, unid )
-	ply.EV_IntroductionPending = true
-	if ( ply.EV_IntroductionPending ) then
-		self:ShowPlayerInfo( ply )
-		ply.EV_IntroductionPending = false
-		
-		ply.EV_LastPlaytimeSave = evolve:Time()
-	end
+	self:ShowPlayerInfo( ply )
+	ply.EV_LastPlaytimeSave = evolve:Time()
 end
 
-/*function PLUGIN:PlayerSpawn( ply )
+
+/*function PLUGIN:PlayerAuthed( ply, stid, unid )
+	
+end
+
+function PLUGIN:PlayerSpawn( ply )
 
 end*/
 
@@ -86,7 +75,7 @@ function PLUGIN:PlayerDisconnected( ply )
 	if ply:IsBot() then return end
 	ply:SetProperty( "Seen", tostring(evolve:Time()) )
 	local time = ply:GetProperty( "Time" ) or 0
-	ply:SetProperty( "Time", time + evolve:Time() - ply.EV_LastPlaytimeSave )
+	ply:SetProperty( "Time", evolve:Time() + time - ply.EV_LastPlaytimeSave )
 	
 	evolve:CommitProperties()
 end
@@ -95,9 +84,9 @@ function PLUGIN:ShutDown()
 	for _, ply in ipairs( player.GetHumans() ) do
 		ply:SetProperty( "Seen", tostring(evolve:Time()) )
 		local time = ply:GetProperty( "Time" ) or 0
-		ply:SetProperty( "Time", time + evolve:Time() - ply.EV_LastPlaytimeSave )
-		
-		ply.EV_LastPlaytimeSave = evolve:Time()
+    
+		if ( !ply.EV_LastPlaytimeSave ) then ply.EV_LastPlaytimeSave = 0 end
+		ply:SetProperty( "Time", evolve:Time() + time - ply.EV_LastPlaytimeSave )
 	end
 	
 	evolve:CommitProperties()
@@ -107,7 +96,7 @@ timer.Create( "EV_PlayTimeSave", 60, 0, function()
 	for _, ply in pairs( player.GetHumans() ) do
 		ply:SetProperty( "Seen", tostring(evolve:Time()) )
 		local time = ply:GetProperty( "Time" ) or 0
-		ply:SetProperty( "Time", time + evolve:Time() - ply.EV_LastPlaytimeSave )
+		ply:SetProperty( "Time", evolve:Time() + time - ply.EV_LastPlaytimeSave )
 		
 		ply.EV_LastPlaytimeSave = evolve:Time()
 	end
