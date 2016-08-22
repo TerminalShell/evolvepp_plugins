@@ -7,44 +7,45 @@ PLUGIN.Title = "Version"
 PLUGIN.Description = "Returns the version of Evolve++ and plugins."
 PLUGIN.Author = "Overv, Northdegree, Mwr247"
 PLUGIN.Commands = { "version" }
-PLUGIN.Disabled = true
 
 -- Set SuppressWarning to true to ignore new update alerts on join
 PLUGIN.SuppressWarning = false
-PLUGIN.VersionURL = "URL_HERE"
+PLUGIN.VersionURL = "https://api.github.com/repos/TerminalShell/evolvepp/branches/master"
+PLUGIN.LatestVersion = nil
 
 function PLUGIN:Call( ply, args )
 	evolve:Notify( ply, evolve.colors.white, "This server is running version ", evolve.colors.red, evolve.version, evolve.colors.white, " of ", evolve.colors.red, evolve.title, evolve.colors.white, "." )
-	self:GetVersion( ply, true )
+  if ( ply:IsOwner() ) then
+    self:GetVersion( ply, true )
+  end
 end
 
 if SERVER then
 	function PLUGIN:PlayerInitialSpawn( ply )
-		if ( !self.SuppressWarning ) then
-			self:GetVersion( ply )
+		if ( !self.SuppressWarning and ply:IsOwner() ) then
+			self:GetVersion( ply, val )
 		end
 	end
 	
 	function PLUGIN:GetVersion( ply, val )
-		if ( ply:EV_IsAdmin() ) then
-			if ( !self.LatestVersion ) then
-				http.Fetch(self.VersionURL,
-					function(data,length)
-						self.LatestVersion = tostring( data ) --:match( "version = ([1-9]+)" ) )
-					end,
-					function()
-						evolve:Message("Can't get lastest version number!")
-					end
-				)
-			end
-			
-			if ( self.LatestVersion!=nil and self:CompareVersion(evolve.version,self.LatestVersion) == -1 and ply:IsAdmin() ) then
-				evolve:Notify( ply, evolve.colors.red, "Warning: ", evolve.colors.white, "A newer version of ", evolve.colors.red, evolve.title, evolve.colors.white," is available!" )
-				evolve:Notify( ply, evolve.colors.white, "Newest version: ", evolve.colors.red, self.LatestVersion, evolve.colors.white, " - ", evolve.colors.white, "You're using version: ", evolve.colors.red, evolve.version, evolve.colors.white, "!" )
-			elseif ( self.LatestVersion!=nil and val ) then
-				evolve:Notify( ply, evolve.colors.white, "This version is up to date!" )
-			end
-		end
+    if ( !self.LatestVersion ) then
+      http.Fetch(self.VersionURL,
+        function(data,length)
+          local codeData = util.JSONToTable( data )
+          if ( codeData and codeData.commit and codeData.commit.commit and codeData.commit.commit.author) then
+            self.LatestVersion = string.gsub(string.gsub(string.sub(codeData.commit.commit.author.date, 3, 10), "-0", "-"), "-", ".")
+          end
+        end,
+        function()
+          evolve:Message("Can't get latest version number!")
+        end
+      )
+    end
+    if ( self.LatestVersion != nil and self:CompareVersion(evolve.version,self.LatestVersion) == -1 ) then
+      evolve:Notify( ply, evolve.colors.white, "A newer version of ", evolve.colors.red, evolve.title, evolve.colors.white," is available: ", evolve.colors.red, self.LatestVersion )
+    elseif ( self.LatestVersion != nil and val ) then
+      evolve:Notify( ply, evolve.colors.white, "This version is up to date." )
+    end
 	end
 
 	function PLUGIN:CompareVersion( cur, new )
