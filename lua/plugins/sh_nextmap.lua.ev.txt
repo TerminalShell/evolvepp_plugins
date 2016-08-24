@@ -12,6 +12,7 @@ PLUGIN.Privileges = { "Nextmap" }
 function PLUGIN:Call( ply, args )
 	if ( ply:EV_HasPrivilege( self.Privileges[1] ) ) then
 		//local maplist = string.Explode("\n",string.Replace(string.Trim(file.Read("mapcycle_zombiesurvival.txt","GAME"),"\n"),"\r",""))
+    local tempmap=game.GetMapNext()
     if evolve.mapcycle then
       print("Evolve++ mapcycle found, searching for suitible map")
       local min=math.Clamp(math.ceil(table.Count(player.GetAll())/16),1,3);
@@ -28,7 +29,6 @@ function PLUGIN:Call( ply, args )
       end
     end
     print("Evolve++ mapcycle map chosen: " .. tempmap)
-    return tempmap
 		evolve:Notify( evolve.colors.blue, ply:Nick(), evolve.colors.white, " has changed the map to ", evolve.colors.red, tempmap, evolve.colors.white, "." )
 
 		timer.Simple( 0.5, function() 
