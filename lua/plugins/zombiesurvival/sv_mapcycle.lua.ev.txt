@@ -1,0 +1,44 @@
+/*-------------------------------------------------------------------------------------------------------------------------
+	Mapcycle
+-------------------------------------------------------------------------------------------------------------------------*/
+
+local PLUGIN = {}
+PLUGIN.Title = "Mapcycle"
+PLUGIN.Description = "Zombie Survival mapcycle provider."
+PLUGIN.Author = "Mwr247"
+
+PLUGIN.Mapcycle = nil
+
+if SERVER then
+  evolve.mapcycle = nil
+  
+  function PLUGIN:SaveMapcycle( json )
+		evolve:SaveData("zsmapcycle", self.Mapcycle)
+	end
+  
+  function PLUGIN:LoadMapcycle()
+		self.Mapcycle = evolve:LoadData("zsmapcycle")
+	end
+  
+  function PLUGIN:Initialize()
+    if !evolve.mapcycle then
+      local currMap=game.GetMap()
+      self:LoadMapcycle()
+      evolve:Log( "Loaded mapcycle from database." )
+      
+      if ( self.Mapcycle and self.Mapcycle.maps and table.Count(self.Mapcycle.maps) > 0 ) then
+        evolve.mapcycle = self.Mapcycle.maps
+        for k, v in pairs( self.Mapcycle.maps ) do
+          if v[1]==currMap then
+            self.Mapcycle.maps[k][5] = v[5]+1 --Increment hits (plays)
+            self.Mapcycle.maps[k][7] = evolve:Time() --Set last played time to now
+            self:SaveMapcycle()
+            break
+          end
+        end
+      end
+    end
+  end
+end
+
+evolve:RegisterPlugin( PLUGIN )
